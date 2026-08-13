@@ -1,31 +1,31 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-add_shortcode('wa_form', 'wa_forms_render_shortcode');
+add_shortcode('wa_form', 'alchemy_forms_render_shortcode');
 
-function wa_forms_render_shortcode($atts) {
+function alchemy_forms_render_shortcode($atts) {
     $atts    = shortcode_atts(['id' => 0, 'title' => ''], $atts, 'wa_form');
     $form_id = (int) $atts['id'];
     $form    = $form_id ? get_post($form_id) : null;
 
     if (!$form || $form->post_type !== 'wa_form' || $form->post_status !== 'publish') {
         return current_user_can('edit_posts')
-            ? '<p><em>' . esc_html__('WA Forms: no published form found for this ID.', 'wa-forms') . '</em></p>'
+            ? '<p><em>' . esc_html__('Alchemy Forms: no published form found for this ID.', 'alchemy-forms') . '</em></p>'
             : '';
     }
 
     $fields = get_post_meta($form_id, '_wa_form_fields', true);
     if (!is_array($fields) || empty($fields)) {
         return current_user_can('edit_posts')
-            ? '<p><em>' . esc_html__('WA Forms: this form has no fields yet.', 'wa-forms') . '</em></p>'
+            ? '<p><em>' . esc_html__('Alchemy Forms: this form has no fields yet.', 'alchemy-forms') . '</em></p>'
             : '';
     }
 
     $settings = get_post_meta($form_id, '_wa_form_settings', true);
     if (!is_array($settings)) $settings = [];
     $recipient   = !empty($settings['recipient']) && is_email($settings['recipient']) ? $settings['recipient'] : get_option('admin_email');
-    $submit_text = !empty($settings['submit_text']) ? $settings['submit_text'] : __('Submit', 'wa-forms');
-    $success_msg = !empty($settings['success_msg']) ? $settings['success_msg'] : __('Thanks — your submission has been received.', 'wa-forms');
+    $submit_text = !empty($settings['submit_text']) ? $settings['submit_text'] : __('Submit', 'alchemy-forms');
+    $success_msg = !empty($settings['success_msg']) ? $settings['success_msg'] : __('Thanks — your submission has been received.', 'alchemy-forms');
 
     // Give each field a stable input name derived from its position + label,
     // and stamp which step it belongs to (a form with no page_break fields is
@@ -36,7 +36,7 @@ function wa_forms_render_shortcode($atts) {
         $f['name'] = 'waf_' . $i . '_' . sanitize_title($f['label']);
         if ($f['type'] === 'page_break') {
             $step++;
-            $step_titles[$step] = $f['label'] !== '' ? $f['label'] : sprintf(__('Step %d', 'wa-forms'), $step + 1);
+            $step_titles[$step] = $f['label'] !== '' ? $f['label'] : sprintf(__('Step %d', 'alchemy-forms'), $step + 1);
         }
         $f['_step'] = $step;
     }
@@ -44,9 +44,9 @@ function wa_forms_render_shortcode($atts) {
     $step_count = $step + 1;
 
     $style_settings = (isset($settings['style']) && is_array($settings['style'])) ? $settings['style'] : [];
-    $style          = wa_forms_resolve_style($style_settings);
+    $style          = alchemy_forms_resolve_style($style_settings);
 
-    wa_forms_enqueue_frontend_css($style['font']);
+    alchemy_forms_enqueue_frontend_css($style['font']);
 
     $errors            = [];
     $values            = [];
@@ -58,7 +58,7 @@ function wa_forms_render_shortcode($atts) {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $posted_this_form) {
         if (!isset($_POST['wa_form_token']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wa_form_token'])), 'wa_form_submit_' . $form_id)) {
-            $errors[] = __('Your session expired — please try submitting again.', 'wa-forms');
+            $errors[] = __('Your session expired — please try submitting again.', 'alchemy-forms');
         } elseif (!empty($_POST['wa_website_hp'])) {
             $success = true; // Honeypot: pretend it worked, save/send nothing.
         } else {
@@ -69,7 +69,7 @@ function wa_forms_render_shortcode($atts) {
             // First pass: raw values by uid, used only to evaluate each field's
             // conditional visibility before the real per-field handling below.
             $condition_lookup = [];
-            $skip_types       = wa_forms_condition_ineligible_types();
+            $skip_types       = alchemy_forms_condition_ineligible_types();
             foreach ($fields as $cf) {
                 if (empty($cf['uid']) || in_array($cf['type'], $skip_types, true)) continue;
                 $raw = isset($_POST[$cf['name']]) ? wp_unslash($_POST[$cf['name']]) : '';
@@ -78,20 +78,20 @@ function wa_forms_render_shortcode($atts) {
             }
 
             foreach ($fields as $field) {
-                if (in_array($field['type'], wa_forms_noninput_field_types(), true)) continue;
+                if (in_array($field['type'], alchemy_forms_noninput_field_types(), true)) continue;
 
                 $name  = $field['name'];
                 $label = $field['label'];
 
                 $condition = isset($field['condition']) ? $field['condition'] : [];
-                if (!wa_forms_evaluate_condition($condition, $condition_lookup)) {
+                if (!alchemy_forms_evaluate_condition($condition, $condition_lookup)) {
                     continue; // hidden by its condition: not required, not stored
                 }
 
                 $errors_before = count($errors);
 
                 if ($field['type'] === 'file') {
-                    $file_result = wa_forms_handle_upload($name, !empty($field['required']), $label, $errors);
+                    $file_result = alchemy_forms_handle_upload($name, !empty($field['required']), $label, $errors);
                     if ($file_result) {
                         $entry_data[$label] = $file_result['url'];
                         $attachment_path    = $file_result['path'];
@@ -109,7 +109,7 @@ function wa_forms_render_shortcode($atts) {
 
                     if (!empty($field['required']) && empty($val)) {
                         /* translators: %s: field label */
-                        $errors[] = sprintf(__('%s is required.', 'wa-forms'), $label);
+                        $errors[] = sprintf(__('%s is required.', 'alchemy-forms'), $label);
                     }
                 } else {
                     $raw = isset($_POST[$name]) ? wp_unslash($_POST[$name]) : '';
@@ -134,21 +134,21 @@ function wa_forms_render_shortcode($atts) {
 
                     if (!empty($field['required']) && $val === '') {
                         /* translators: %s: field label */
-                        $errors[] = sprintf(__('%s is required.', 'wa-forms'), $label);
+                        $errors[] = sprintf(__('%s is required.', 'alchemy-forms'), $label);
                     }
                     if ($field['type'] === 'email' && $val !== '' && !is_email($val)) {
                         /* translators: %s: field label */
-                        $errors[] = sprintf(__('Please enter a valid email address for %s.', 'wa-forms'), $label);
+                        $errors[] = sprintf(__('Please enter a valid email address for %s.', 'alchemy-forms'), $label);
                     }
                     if ($field['type'] === 'number' && $val !== '' && !is_numeric($val)) {
                         /* translators: %s: field label */
-                        $errors[] = sprintf(__('Please enter a valid number for %s.', 'wa-forms'), $label);
+                        $errors[] = sprintf(__('Please enter a valid number for %s.', 'alchemy-forms'), $label);
                     }
                     if ($field['type'] === 'date' && $val !== '') {
                         $date_check = DateTime::createFromFormat('Y-m-d', $val);
                         if (!$date_check || $date_check->format('Y-m-d') !== $val) {
                             /* translators: %s: field label */
-                            $errors[] = sprintf(__('Please enter a valid date for %s.', 'wa-forms'), $label);
+                            $errors[] = sprintf(__('Please enter a valid date for %s.', 'alchemy-forms'), $label);
                         }
                     }
                 }
@@ -159,18 +159,18 @@ function wa_forms_render_shortcode($atts) {
             }
 
             if (empty($errors)) {
-                wa_forms_save_entry($form_id, $entry_data);
+                alchemy_forms_save_entry($form_id, $entry_data);
 
-                $body = sprintf(__("New submission — %s:\n\n", 'wa-forms'), $form->post_title);
+                $body = sprintf(__("New submission — %s:\n\n", 'alchemy-forms'), $form->post_title);
                 foreach ($entry_data as $label => $val) {
                     $body .= $label . ': ' . $val . "\n";
                 }
                 $entries_url = admin_url('edit.php?post_type=wa_form&page=wa-form-entries&form_id=' . $form_id);
-                $body .= "\n" . __('View all entries:', 'wa-forms') . ' ' . $entries_url . "\n";
+                $body .= "\n" . __('View all entries:', 'alchemy-forms') . ' ' . $entries_url . "\n";
 
                 wp_mail(
                     $recipient,
-                    sprintf(__('New submission: %s', 'wa-forms'), $form->post_title),
+                    sprintf(__('New submission: %s', 'alchemy-forms'), $form->post_title),
                     $body,
                     [],
                     $attachment_path ? [$attachment_path] : []
@@ -194,7 +194,7 @@ function wa_forms_render_shortcode($atts) {
 
         <?php if ($success) : ?>
             <div class="wa-form-success" role="status">
-                <h3><?php esc_html_e('Thank you', 'wa-forms'); ?></h3>
+                <h3><?php esc_html_e('Thank you', 'alchemy-forms'); ?></h3>
                 <p><?php echo esc_html($success_msg); ?></p>
             </div>
         <?php else : ?>
@@ -202,7 +202,7 @@ function wa_forms_render_shortcode($atts) {
                 <input type="hidden" name="wa_form_id" value="<?php echo (int) $form_id; ?>">
                 <input type="hidden" name="wa_form_token" value="<?php echo esc_attr(wp_create_nonce('wa_form_submit_' . $form_id)); ?>">
                 <div class="wa-form-honeypot" aria-hidden="true">
-                    <label><?php esc_html_e('Leave this field blank', 'wa-forms'); ?>
+                    <label><?php esc_html_e('Leave this field blank', 'alchemy-forms'); ?>
                         <input type="text" name="wa_website_hp" tabindex="-1" autocomplete="off">
                     </label>
                 </div>
@@ -219,7 +219,7 @@ function wa_forms_render_shortcode($atts) {
 
                 <?php if ($step_count <= 1) : ?>
                     <div class="wa-form-grid">
-                        <?php foreach ($fields as $field) : wa_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
+                        <?php foreach ($fields as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
                     </div>
 
                     <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
@@ -234,7 +234,7 @@ function wa_forms_render_shortcode($atts) {
                     }
                     ksort($steps);
                     ?>
-                    <div class="wa-form-progress" data-label-template="<?php echo esc_attr(__('Step {n} of {total}', 'wa-forms')); ?>">
+                    <div class="wa-form-progress" data-label-template="<?php echo esc_attr(__('Step {n} of {total}', 'alchemy-forms')); ?>">
                         <div class="wa-form-progress-label"></div>
                         <div class="wa-form-progress-bar"><div class="wa-form-progress-fill"></div></div>
                     </div>
@@ -244,14 +244,14 @@ function wa_forms_render_shortcode($atts) {
                                 <h3 class="wa-form-step-title"><?php echo esc_html($step_titles[$step_index]); ?></h3>
                             <?php endif; ?>
                             <div class="wa-form-grid">
-                                <?php foreach ($step_fields as $field) : wa_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
+                                <?php foreach ($step_fields as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
                             </div>
                             <div class="wa-form-step-nav">
                                 <?php if ($step_index > 0) : ?>
-                                    <button type="button" class="wa-form-prev"><?php esc_html_e('Back', 'wa-forms'); ?></button>
+                                    <button type="button" class="wa-form-prev"><?php esc_html_e('Back', 'alchemy-forms'); ?></button>
                                 <?php endif; ?>
                                 <?php if ($step_index < $step_count - 1) : ?>
-                                    <button type="button" class="wa-form-next"><?php esc_html_e('Next', 'wa-forms'); ?></button>
+                                    <button type="button" class="wa-form-next"><?php esc_html_e('Next', 'alchemy-forms'); ?></button>
                                 <?php else : ?>
                                     <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
                                 <?php endif; ?>
@@ -272,7 +272,7 @@ function wa_forms_render_shortcode($atts) {
  * output buffer). page_break fields are never passed in here; the caller
  * only uses them to decide where one step ends and the next begins.
  */
-function wa_forms_render_field_markup($field, $form_id, $values, $condition_lookup) {
+function alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup) {
     $name     = $field['name'];
     $type     = $field['type'];
     $is_group = in_array($type, ['radio', 'checkbox'], true);
@@ -285,7 +285,7 @@ function wa_forms_render_field_markup($field, $form_id, $values, $condition_look
 
     $condition     = isset($field['condition']) ? $field['condition'] : [];
     $has_condition = !empty($condition['field']);
-    $cond_visible  = wa_forms_evaluate_condition($condition, $condition_lookup);
+    $cond_visible  = alchemy_forms_evaluate_condition($condition, $condition_lookup);
     $field_classes = 'wa-field wa-field--' . $wid . (!$cond_visible ? ' wa-field--hidden' : '');
     ?>
     <div class="<?php echo esc_attr($field_classes); ?>"
@@ -328,12 +328,12 @@ function wa_forms_render_field_markup($field, $form_id, $values, $condition_look
             <?php elseif ($type === 'file') : ?>
                 <div class="wa-file-input">
                     <input type="file" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" accept=".pdf,.jpg,.jpeg,.png" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
-                    <span class="wa-file-hint"><?php esc_html_e('PDF, JPG or PNG, up to 5MB', 'wa-forms'); ?></span>
+                    <span class="wa-file-hint"><?php esc_html_e('PDF, JPG or PNG, up to 5MB', 'alchemy-forms'); ?></span>
                 </div>
 
             <?php elseif ($type === 'select') : ?>
                 <select id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
-                    <option value=""><?php esc_html_e('— Select —', 'wa-forms'); ?></option>
+                    <option value=""><?php esc_html_e('— Select —', 'alchemy-forms'); ?></option>
                     <?php foreach ($options as $option) : ?>
                         <option value="<?php echo esc_attr($option); ?>" <?php selected((string) $val, (string) $option); ?>><?php echo esc_html($option); ?></option>
                     <?php endforeach; ?>
@@ -351,11 +351,11 @@ function wa_forms_render_field_markup($field, $form_id, $values, $condition_look
  * Handle a single uploaded file. Returns ['url' => ..., 'path' => ...] or null.
  * Appends to $errors by reference on failure.
  */
-function wa_forms_handle_upload($input_name, $required, $label, array &$errors) {
+function alchemy_forms_handle_upload($input_name, $required, $label, array &$errors) {
     if (empty($_FILES[$input_name]['name'])) {
         if ($required) {
             /* translators: %s: field label */
-            $errors[] = sprintf(__('%s is required.', 'wa-forms'), $label);
+            $errors[] = sprintf(__('%s is required.', 'alchemy-forms'), $label);
         }
         return null;
     }
@@ -365,17 +365,17 @@ function wa_forms_handle_upload($input_name, $required, $label, array &$errors) 
     $max_bytes = 5 * 1024 * 1024;
 
     if ($file['error'] !== UPLOAD_ERR_OK) {
-        $errors[] = __('There was a problem uploading your file — please try again.', 'wa-forms');
+        $errors[] = __('There was a problem uploading your file — please try again.', 'alchemy-forms');
         return null;
     }
     if ($file['size'] > $max_bytes) {
-        $errors[] = __('That file is too large — please keep it under 5MB.', 'wa-forms');
+        $errors[] = __('That file is too large — please keep it under 5MB.', 'alchemy-forms');
         return null;
     }
     // Check the real type, not just what the browser claims.
     $check = wp_check_filetype_and_ext($file['tmp_name'], $file['name']);
     if (empty($check['type']) || !in_array($check['type'], $allowed, true)) {
-        $errors[] = __('Please upload a PDF, JPG or PNG file.', 'wa-forms');
+        $errors[] = __('Please upload a PDF, JPG or PNG file.', 'alchemy-forms');
         return null;
     }
 
@@ -385,7 +385,7 @@ function wa_forms_handle_upload($input_name, $required, $label, array &$errors) 
 
     $upload = wp_handle_upload($file, ['test_form' => false]);
     if (isset($upload['error'])) {
-        $errors[] = __('Upload failed:', 'wa-forms') . ' ' . $upload['error'];
+        $errors[] = __('Upload failed:', 'alchemy-forms') . ' ' . $upload['error'];
         return null;
     }
 
@@ -409,40 +409,40 @@ function wa_forms_handle_upload($input_name, $required, $label, array &$errors) 
 /* -------------------------------------------------------------------------
  * Per-form style resolution
  * ---------------------------------------------------------------------- */
-function wa_forms_resolve_style($style_settings) {
+function alchemy_forms_resolve_style($style_settings) {
     if (!is_array($style_settings)) $style_settings = [];
-    $d = wa_forms_style_defaults();
+    $d = alchemy_forms_style_defaults();
 
-    $primary      = wa_forms_sanitize_hex($style_settings['primary_color'] ?? '', $d['primary_color']);
-    $accent       = wa_forms_sanitize_hex($style_settings['accent_color'] ?? '', $d['accent_color']);
-    $border       = wa_forms_sanitize_hex($style_settings['border_color'] ?? '', $d['border_color']);
-    $placeholder  = wa_forms_sanitize_hex($style_settings['placeholder_color'] ?? '', $d['placeholder_color']);
+    $primary      = alchemy_forms_sanitize_hex($style_settings['primary_color'] ?? '', $d['primary_color']);
+    $accent       = alchemy_forms_sanitize_hex($style_settings['accent_color'] ?? '', $d['accent_color']);
+    $border       = alchemy_forms_sanitize_hex($style_settings['border_color'] ?? '', $d['border_color']);
+    $placeholder  = alchemy_forms_sanitize_hex($style_settings['placeholder_color'] ?? '', $d['placeholder_color']);
     // Forms saved under the old preset system stored a slug (e.g. 'rounded') here;
-    // wa_forms_sanitize_px() falls back cleanly when the value isn't numeric.
-    $radius       = wa_forms_sanitize_px($style_settings['radius'] ?? null, $d['radius']);
+    // alchemy_forms_sanitize_px() falls back cleanly when the value isn't numeric.
+    $radius       = alchemy_forms_sanitize_px($style_settings['radius'] ?? null, $d['radius']);
 
-    $label_color       = wa_forms_sanitize_hex($style_settings['label_color'] ?? '', $d['label_color']);
-    $label_font_size   = wa_forms_sanitize_px($style_settings['label_font_size'] ?? null, $d['label_font_size']);
-    $field_gap         = wa_forms_sanitize_px($style_settings['field_gap'] ?? null, $d['field_gap']);
-    $input_padding     = wa_forms_sanitize_px($style_settings['input_padding'] ?? null, $d['input_padding']);
-    $input_bg          = wa_forms_sanitize_hex($style_settings['input_bg_color'] ?? '', $d['input_bg_color']);
-    $button_bg         = wa_forms_sanitize_hex($style_settings['button_bg_color'] ?? '', $d['button_bg_color']);
-    $button_hover      = wa_forms_sanitize_hex($style_settings['button_hover_color'] ?? '', $d['button_hover_color']);
-    $button_padding    = wa_forms_sanitize_px($style_settings['button_padding'] ?? null, $d['button_padding']);
-    $button_font_size  = wa_forms_sanitize_px($style_settings['button_font_size'] ?? null, $d['button_font_size']);
-    $container_bg      = wa_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', $d['container_bg_color']);
-    $container_opacity = wa_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
+    $label_color       = alchemy_forms_sanitize_hex($style_settings['label_color'] ?? '', $d['label_color']);
+    $label_font_size   = alchemy_forms_sanitize_px($style_settings['label_font_size'] ?? null, $d['label_font_size']);
+    $field_gap         = alchemy_forms_sanitize_px($style_settings['field_gap'] ?? null, $d['field_gap']);
+    $input_padding     = alchemy_forms_sanitize_px($style_settings['input_padding'] ?? null, $d['input_padding']);
+    $input_bg          = alchemy_forms_sanitize_hex($style_settings['input_bg_color'] ?? '', $d['input_bg_color']);
+    $button_bg         = alchemy_forms_sanitize_hex($style_settings['button_bg_color'] ?? '', $d['button_bg_color']);
+    $button_hover      = alchemy_forms_sanitize_hex($style_settings['button_hover_color'] ?? '', $d['button_hover_color']);
+    $button_padding    = alchemy_forms_sanitize_px($style_settings['button_padding'] ?? null, $d['button_padding']);
+    $button_font_size  = alchemy_forms_sanitize_px($style_settings['button_font_size'] ?? null, $d['button_font_size']);
+    $container_bg      = alchemy_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', $d['container_bg_color']);
+    $container_opacity = alchemy_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
 
-    [$cr, $cg, $cb] = wa_forms_hex_to_rgb($container_bg);
+    [$cr, $cg, $cb] = alchemy_forms_hex_to_rgb($container_bg);
     $container_rgba = sprintf('rgba(%d, %d, %d, %s)', $cr, $cg, $cb, $container_opacity / 100);
 
-    $font_presets = wa_forms_font_presets();
+    $font_presets = alchemy_forms_font_presets();
     $font_key     = (!empty($style_settings['font']) && isset($font_presets[$style_settings['font']])) ? $style_settings['font'] : 'default';
     $font         = $font_presets[$font_key];
 
     $vars = [
         '--wa-primary'          => $primary,
-        '--wa-primary-dark'     => wa_forms_darken_hex($primary, 0.22),
+        '--wa-primary-dark'     => alchemy_forms_darken_hex($primary, 0.22),
         '--wa-accent'           => $accent,
         '--wa-border'           => $border,
         '--wa-placeholder'      => $placeholder,
@@ -472,22 +472,22 @@ function wa_forms_resolve_style($style_settings) {
 /* -------------------------------------------------------------------------
  * Frontend CSS (only loads on pages that render a form)
  * ---------------------------------------------------------------------- */
-function wa_forms_enqueue_frontend_css($font = null) {
+function alchemy_forms_enqueue_frontend_css($font = null) {
     static $css_done = false;
     if (!$css_done) {
         $css_done = true;
-        wp_register_style('wa-forms-frontend', false, [], WA_FORMS_VERSION);
-        wp_enqueue_style('wa-forms-frontend');
-        wp_add_inline_style('wa-forms-frontend', wa_forms_frontend_css());
-        wp_enqueue_script('wa-forms-frontend', WA_FORMS_URL . 'assets/frontend.js', [], WA_FORMS_VERSION, true);
+        wp_register_style('alchemy-forms-frontend', false, [], ALCHEMY_FORMS_VERSION);
+        wp_enqueue_style('alchemy-forms-frontend');
+        wp_add_inline_style('alchemy-forms-frontend', alchemy_forms_frontend_css());
+        wp_enqueue_script('alchemy-forms-frontend', ALCHEMY_FORMS_URL . 'assets/frontend.js', [], ALCHEMY_FORMS_VERSION, true);
     }
 
     if (!empty($font['google'])) {
-        wp_enqueue_style('wa-forms-fonts-' . substr(md5($font['google']), 0, 8), $font['google'], [], null);
+        wp_enqueue_style('alchemy-forms-fonts-' . substr(md5($font['google']), 0, 8), $font['google'], [], null);
     }
 }
 
-function wa_forms_frontend_css() {
+function alchemy_forms_frontend_css() {
     return <<<CSS
 .wa-form-wrap {
   --wa-primary: #2F4F3E;

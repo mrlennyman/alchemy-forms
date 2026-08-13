@@ -7,11 +7,11 @@ if (!defined('ABSPATH')) exit;
 add_action('admin_menu', function () {
     add_submenu_page(
         'edit.php?post_type=wa_form',
-        __('Import', 'wa-forms'),
-        __('Import', 'wa-forms'),
+        __('Import', 'alchemy-forms'),
+        __('Import', 'alchemy-forms'),
         'edit_posts',
         'wa-form-import',
-        'wa_forms_import_page'
+        'alchemy_forms_import_page'
     );
 });
 
@@ -24,56 +24,56 @@ add_action('admin_init', function () {
     if (!isset($_GET['page']) || $_GET['page'] !== 'wa-form-import') return;
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_FILES['nff_file'])) return;
 
-    if (!current_user_can('edit_posts')) wp_die(esc_html__('You do not have permission to import forms.', 'wa-forms'));
-    check_admin_referer('wa_forms_import');
+    if (!current_user_can('edit_posts')) wp_die(esc_html__('You do not have permission to import forms.', 'alchemy-forms'));
+    check_admin_referer('alchemy_forms_import');
 
-    $error = wa_forms_process_import();
+    $error = alchemy_forms_process_import();
 
     if ($error) {
-        set_transient('wa_forms_import_error_' . get_current_user_id(), $error, MINUTE_IN_SECONDS);
+        set_transient('alchemy_forms_import_error_' . get_current_user_id(), $error, MINUTE_IN_SECONDS);
         wp_safe_redirect(admin_url('edit.php?post_type=wa_form&page=wa-form-import'));
         exit;
     }
-    // wa_forms_process_import() redirects to the new draft itself on success.
+    // alchemy_forms_process_import() redirects to the new draft itself on success.
 });
 
-function wa_forms_import_page() {
-    if (!current_user_can('edit_posts')) wp_die(esc_html__('You do not have permission to import forms.', 'wa-forms'));
+function alchemy_forms_import_page() {
+    if (!current_user_can('edit_posts')) wp_die(esc_html__('You do not have permission to import forms.', 'alchemy-forms'));
 
-    $error_key = 'wa_forms_import_error_' . get_current_user_id();
+    $error_key = 'alchemy_forms_import_error_' . get_current_user_id();
     $error     = get_transient($error_key);
     if ($error !== false) delete_transient($error_key);
     ?>
     <div class="wrap">
-        <h1><?php esc_html_e('Import from Ninja Forms', 'wa-forms'); ?></h1>
+        <h1><?php esc_html_e('Import from Ninja Forms', 'alchemy-forms'); ?></h1>
 
         <?php if ($error) : ?>
             <div class="notice notice-error"><p><?php echo esc_html($error); ?></p></div>
         <?php endif; ?>
 
-        <p><?php esc_html_e('Upload a Ninja Forms export (.nff) to create a new WA Forms draft with the same fields, layout, and conditional logic where possible. The new form is saved as a draft so you can review it before publishing.', 'wa-forms'); ?></p>
+        <p><?php esc_html_e('Upload a Ninja Forms export (.nff) to create a new Alchemy Forms draft with the same fields, layout, and conditional logic where possible. The new form is saved as a draft so you can review it before publishing.', 'alchemy-forms'); ?></p>
 
         <div class="notice notice-info inline">
-            <p><strong><?php esc_html_e('What carries over', 'wa-forms'); ?></strong></p>
+            <p><strong><?php esc_html_e('What carries over', 'alchemy-forms'); ?></strong></p>
             <ul style="list-style:disc;margin-left:1.5em;">
-                <li><?php esc_html_e('Text, email, phone, number, date, paragraph, dropdown, radio, and checkbox fields, with their labels, required flags, and options.', 'wa-forms'); ?></li>
-                <li><?php esc_html_e('Multi-step forms — each page becomes a step, with a progress indicator and Back/Next navigation.', 'wa-forms'); ?></li>
-                <li><?php esc_html_e('Informational HTML blocks and divider lines, converted to HTML content blocks.', 'wa-forms'); ?></li>
-                <li><?php esc_html_e('Simple "show this field only if another field equals a value" conditional logic — including on HTML blocks and across steps.', 'wa-forms'); ?></li>
-                <li><?php esc_html_e('The recipient email, submit button text, and success message.', 'wa-forms'); ?></li>
+                <li><?php esc_html_e('Text, email, phone, number, date, paragraph, dropdown, radio, and checkbox fields, with their labels, required flags, and options.', 'alchemy-forms'); ?></li>
+                <li><?php esc_html_e('Multi-step forms — each page becomes a step, with a progress indicator and Back/Next navigation.', 'alchemy-forms'); ?></li>
+                <li><?php esc_html_e('Informational HTML blocks and divider lines, converted to HTML content blocks.', 'alchemy-forms'); ?></li>
+                <li><?php esc_html_e('Simple "show this field only if another field equals a value" conditional logic — including on HTML blocks and across steps.', 'alchemy-forms'); ?></li>
+                <li><?php esc_html_e('The recipient email, submit button text, and success message.', 'alchemy-forms'); ?></li>
             </ul>
-            <p><strong><?php esc_html_e("What doesn't", 'wa-forms'); ?></strong></p>
+            <p><strong><?php esc_html_e("What doesn't", 'alchemy-forms'); ?></strong></p>
             <ul style="list-style:disc;margin-left:1.5em;">
-                <li><?php esc_html_e('Only one recipient email and one condition per field are kept.', 'wa-forms'); ?></li>
-                <li><?php esc_html_e('Conditions using a comparator other than "equals"/"is not" are skipped (the affected field will always show).', 'wa-forms'); ?></li>
+                <li><?php esc_html_e('Only one recipient email and one condition per field are kept.', 'alchemy-forms'); ?></li>
+                <li><?php esc_html_e('Conditions using a comparator other than "equals"/"is not" are skipped (the affected field will always show).', 'alchemy-forms'); ?></li>
             </ul>
         </div>
 
         <form method="post" enctype="multipart/form-data" style="margin-top:1.5em;">
-            <?php wp_nonce_field('wa_forms_import'); ?>
+            <?php wp_nonce_field('alchemy_forms_import'); ?>
             <input type="file" name="nff_file" accept=".nff,.json" required>
             <p class="submit">
-                <button type="submit" class="button button-primary"><?php esc_html_e('Import Form', 'wa-forms'); ?></button>
+                <button type="submit" class="button button-primary"><?php esc_html_e('Import Form', 'alchemy-forms'); ?></button>
             </p>
         </form>
     </div>
@@ -89,14 +89,14 @@ add_action('admin_notices', function () {
     if (!$screen || $screen->post_type !== 'wa_form' || $screen->base !== 'post' || empty($_GET['post'])) return;
 
     $post_id = (int) $_GET['post'];
-    $summary = get_transient('wa_forms_import_summary_' . $post_id);
+    $summary = get_transient('alchemy_forms_import_summary_' . $post_id);
     if ($summary === false) return;
-    delete_transient('wa_forms_import_summary_' . $post_id);
+    delete_transient('alchemy_forms_import_summary_' . $post_id);
     ?>
     <div class="notice notice-success is-dismissible">
-        <p><strong><?php esc_html_e('Form imported from Ninja Forms.', 'wa-forms'); ?></strong> <?php esc_html_e("It's saved as a draft — review it before publishing.", 'wa-forms'); ?></p>
+        <p><strong><?php esc_html_e('Form imported from Ninja Forms.', 'alchemy-forms'); ?></strong> <?php esc_html_e("It's saved as a draft — review it before publishing.", 'alchemy-forms'); ?></p>
         <?php if (!empty($summary)) : ?>
-            <p><?php esc_html_e('A few things to double-check:', 'wa-forms'); ?></p>
+            <p><?php esc_html_e('A few things to double-check:', 'alchemy-forms'); ?></p>
             <ul style="list-style:disc;margin-left:1.5em;">
                 <?php foreach ($summary as $line) : ?>
                     <li><?php echo esc_html($line); ?></li>
@@ -115,30 +115,30 @@ add_action('admin_notices', function () {
  * Validates the upload, maps it into a new draft wa_form, and redirects to
  * its edit screen. Returns an error string (and does NOT redirect) on failure.
  */
-function wa_forms_process_import() {
+function alchemy_forms_process_import() {
     $file = $_FILES['nff_file'];
     if (empty($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
-        return __('Please choose a valid .nff file to upload.', 'wa-forms');
+        return __('Please choose a valid .nff file to upload.', 'alchemy-forms');
     }
     if (!is_uploaded_file($file['tmp_name'])) {
-        return __('Upload failed — please try again.', 'wa-forms');
+        return __('Upload failed — please try again.', 'alchemy-forms');
     }
     if ($file['size'] > 2 * 1024 * 1024) {
-        return __('That file is too large to be a Ninja Forms export.', 'wa-forms');
+        return __('That file is too large to be a Ninja Forms export.', 'alchemy-forms');
     }
 
     $json = file_get_contents($file['tmp_name']);
     $data = json_decode($json, true);
 
     if (!is_array($data) || !isset($data['fields']) || !is_array($data['fields']) || !isset($data['settings']) || !is_array($data['settings'])) {
-        return __("That doesn't look like a Ninja Forms export — no fields/settings found.", 'wa-forms');
+        return __("That doesn't look like a Ninja Forms export — no fields/settings found.", 'alchemy-forms');
     }
 
     $parts = (isset($data['settings']['formContentData']) && is_array($data['settings']['formContentData'])) ? $data['settings']['formContentData'] : [];
 
-    $result = wa_forms_map_nf_import($data, $parts);
+    $result = alchemy_forms_map_nf_import($data, $parts);
 
-    $title = !empty($data['settings']['title']) ? sanitize_text_field($data['settings']['title']) : __('Imported Form', 'wa-forms');
+    $title = !empty($data['settings']['title']) ? sanitize_text_field($data['settings']['title']) : __('Imported Form', 'alchemy-forms');
 
     $post_id = wp_insert_post([
         'post_type'   => 'wa_form',
@@ -146,12 +146,12 @@ function wa_forms_process_import() {
         'post_title'  => $title,
     ]);
     if (!$post_id || is_wp_error($post_id)) {
-        return __('Could not create the new form — please try again.', 'wa-forms');
+        return __('Could not create the new form — please try again.', 'alchemy-forms');
     }
 
     update_post_meta($post_id, '_wa_form_fields', $result['fields']);
     update_post_meta($post_id, '_wa_form_settings', $result['settings']);
-    set_transient('wa_forms_import_summary_' . $post_id, $result['summary'], MINUTE_IN_SECONDS * 10);
+    set_transient('alchemy_forms_import_summary_' . $post_id, $result['summary'], MINUTE_IN_SECONDS * 10);
 
     wp_safe_redirect(admin_url('post.php?post=' . $post_id . '&action=edit'));
     exit;
@@ -160,7 +160,7 @@ function wa_forms_process_import() {
 /**
  * Field types this plugin can represent, keyed by their Ninja Forms type.
  */
-function wa_forms_nf_type_map() {
+function alchemy_forms_nf_type_map() {
     return [
         'firstname'    => 'text',
         'lastname'     => 'text',
@@ -179,12 +179,12 @@ function wa_forms_nf_type_map() {
 }
 
 /**
- * Converts a decoded .nff array into WA Forms' _wa_form_fields/_wa_form_settings
+ * Converts a decoded .nff array into Alchemy Forms' _wa_form_fields/_wa_form_settings
  * shape, plus a plain-language summary of anything dropped or simplified.
  */
-function wa_forms_map_nf_import($data, $parts) {
-    $type_map     = wa_forms_nf_type_map();
-    $option_types = wa_forms_option_field_types();
+function alchemy_forms_map_nf_import($data, $parts) {
+    $type_map     = alchemy_forms_nf_type_map();
+    $option_types = alchemy_forms_option_field_types();
     $summary      = [];
 
     // Key => raw NF field lookup, so the layout walk below can pull full field
@@ -248,7 +248,7 @@ function wa_forms_map_nf_import($data, $parts) {
 
         if (!isset($type_map[$nf_type])) {
             /* translators: 1: field label, 2: Ninja Forms field type */
-            $summary[] = sprintf(__('Skipped "%1$s" (%2$s fields aren\'t supported).', 'wa-forms'), $label !== '' ? $label : __('(untitled)', 'wa-forms'), $nf_type);
+            $summary[] = sprintf(__('Skipped "%1$s" (%2$s fields aren\'t supported).', 'alchemy-forms'), $label !== '' ? $label : __('(untitled)', 'alchemy-forms'), $nf_type);
             continue;
         }
 
@@ -318,7 +318,7 @@ function wa_forms_map_nf_import($data, $parts) {
 
             if (!isset($comparator_map[$comparator])) {
                 /* translators: %s: Ninja Forms comparator name */
-                $summary[] = sprintf(__('A condition using the "%s" comparator was skipped (only equals/is not are supported); the affected field will always show.', 'wa-forms'), $comparator);
+                $summary[] = sprintf(__('A condition using the "%s" comparator was skipped (only equals/is not are supported); the affected field will always show.', 'alchemy-forms'), $comparator);
                 continue;
             }
 
@@ -357,15 +357,15 @@ function wa_forms_map_nf_import($data, $parts) {
             $recipient = $first;
         }
         if (count($addresses) > 1) {
-            $summary[] = __('Only the first recipient email was kept; the others from the original form were dropped.', 'wa-forms');
+            $summary[] = __('Only the first recipient email was kept; the others from the original form were dropped.', 'alchemy-forms');
         }
         if (count($email_actions) > 1) {
             /* translators: %d: number of extra email notifications dropped */
-            $summary[] = sprintf(__('%d extra email notification(s) from the original form were dropped; only one recipient is supported.', 'wa-forms'), count($email_actions) - 1);
+            $summary[] = sprintf(__('%d extra email notification(s) from the original form were dropped; only one recipient is supported.', 'alchemy-forms'), count($email_actions) - 1);
         }
     }
 
-    $success_msg = __('Thanks — your submission has been received.', 'wa-forms');
+    $success_msg = __('Thanks — your submission has been received.', 'alchemy-forms');
     foreach ($actions as $a) {
         if (!is_array($a) || !isset($a['type']) || $a['type'] !== 'successmessage') continue;
         $raw = !empty($a['success_msg']) ? $a['success_msg'] : (!empty($a['message']) ? $a['message'] : '');
@@ -375,21 +375,21 @@ function wa_forms_map_nf_import($data, $parts) {
         if ($stripped !== '') {
             $success_msg = $stripped;
             if ($stripped !== trim($raw)) {
-                $summary[] = __('The success message contained formatting/links, which were removed (WA Forms success messages are plain text).', 'wa-forms');
+                $summary[] = __('The success message contained formatting/links, which were removed (Alchemy Forms success messages are plain text).', 'alchemy-forms');
             }
         }
         break;
     }
 
     if (empty($fields)) {
-        $summary[] = __('No supported fields were found in this file.', 'wa-forms');
+        $summary[] = __('No supported fields were found in this file.', 'alchemy-forms');
     }
 
     return [
         'fields'   => $fields,
         'settings' => [
             'recipient'   => $recipient,
-            'submit_text' => $submit_text !== '' ? $submit_text : __('Submit', 'wa-forms'),
+            'submit_text' => $submit_text !== '' ? $submit_text : __('Submit', 'alchemy-forms'),
             'success_msg' => $success_msg,
         ],
         'summary'  => $summary,

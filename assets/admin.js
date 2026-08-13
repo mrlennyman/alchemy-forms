@@ -108,7 +108,7 @@ jQuery(function ($) {
 
             $select.empty().append($('<option>', { value: '', text: 'Select a field…' }));
             items.forEach(function (other) {
-                // Mirrors wa_forms_condition_ineligible_types() in wa-forms.php: step
+                // Mirrors alchemy_forms_condition_ineligible_types() in alchemy-forms.php: step
                 // breaks/HTML blocks collect no value, and checkbox/file fields can't
                 // be evaluated consistently between this dropdown and the server.
                 if (!other.uid || other.uid === self.uid || ['page_break', 'html', 'checkbox', 'file'].indexOf(other.type) !== -1) return;

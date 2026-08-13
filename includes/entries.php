@@ -4,14 +4,14 @@ if (!defined('ABSPATH')) exit;
 /* -------------------------------------------------------------------------
  * Table
  * ---------------------------------------------------------------------- */
-function wa_forms_entries_table() {
+function alchemy_forms_entries_table() {
     global $wpdb;
     return $wpdb->prefix . 'wa_form_entries';
 }
 
-function wa_forms_create_entries_table() {
+function alchemy_forms_create_entries_table() {
     global $wpdb;
-    $table   = wa_forms_entries_table();
+    $table   = alchemy_forms_entries_table();
     $charset = $wpdb->get_charset_collate();
     $sql = "CREATE TABLE {$table} (
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -28,9 +28,9 @@ function wa_forms_create_entries_table() {
 /* -------------------------------------------------------------------------
  * Save / query helpers
  * ---------------------------------------------------------------------- */
-function wa_forms_save_entry($form_id, array $data) {
+function alchemy_forms_save_entry($form_id, array $data) {
     global $wpdb;
-    $wpdb->insert(wa_forms_entries_table(), [
+    $wpdb->insert(alchemy_forms_entries_table(), [
         'form_id'      => (int) $form_id,
         'submitted_at' => current_time('mysql'),
         'data'         => wp_json_encode($data),
@@ -38,9 +38,9 @@ function wa_forms_save_entry($form_id, array $data) {
     return $wpdb->insert_id;
 }
 
-function wa_forms_count_entries($form_id = 0) {
+function alchemy_forms_count_entries($form_id = 0) {
     global $wpdb;
-    $table = wa_forms_entries_table();
+    $table = alchemy_forms_entries_table();
     if ($form_id) {
         return (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$table} WHERE form_id = %d", $form_id));
     }
@@ -53,25 +53,25 @@ function wa_forms_count_entries($form_id = 0) {
 add_action('admin_menu', function () {
     add_submenu_page(
         'edit.php?post_type=wa_form',
-        __('Entries', 'wa-forms'),
-        __('Entries', 'wa-forms'),
+        __('Entries', 'alchemy-forms'),
+        __('Entries', 'alchemy-forms'),
         'manage_options',
         'wa-form-entries',
-        'wa_forms_entries_page'
+        'alchemy_forms_entries_page'
     );
 });
 
-function wa_forms_entries_page() {
-    if (!current_user_can('manage_options')) wp_die(esc_html__('You do not have permission to view entries.', 'wa-forms'));
+function alchemy_forms_entries_page() {
+    if (!current_user_can('manage_options')) wp_die(esc_html__('You do not have permission to view entries.', 'alchemy-forms'));
 
     // Single entry view
     if (isset($_GET['entry'])) {
-        wa_forms_render_single_entry((int) $_GET['entry']);
+        alchemy_forms_render_single_entry((int) $_GET['entry']);
         return;
     }
 
     global $wpdb;
-    $table    = wa_forms_entries_table();
+    $table    = alchemy_forms_entries_table();
     $form_id  = isset($_GET['form_id']) ? (int) $_GET['form_id'] : 0;
     $paged    = isset($_GET['paged']) ? max(1, (int) $_GET['paged']) : 1;
     $per_page = 20;
@@ -80,13 +80,13 @@ function wa_forms_entries_page() {
     $forms = get_posts(['post_type' => 'wa_form', 'numberposts' => -1, 'post_status' => 'any', 'orderby' => 'title', 'order' => 'ASC']);
 
     if ($form_id) {
-        $total   = wa_forms_count_entries($form_id);
+        $total   = alchemy_forms_count_entries($form_id);
         $entries = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$table} WHERE form_id = %d ORDER BY submitted_at DESC LIMIT %d OFFSET %d",
             $form_id, $per_page, $offset
         ));
     } else {
-        $total   = wa_forms_count_entries();
+        $total   = alchemy_forms_count_entries();
         $entries = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$table} ORDER BY submitted_at DESC LIMIT %d OFFSET %d",
             $per_page, $offset
@@ -95,43 +95,43 @@ function wa_forms_entries_page() {
     $pages = max(1, (int) ceil($total / $per_page));
 
     $export_url = wp_nonce_url(
-        admin_url('admin-post.php?action=wa_forms_export' . ($form_id ? '&form_id=' . $form_id : '')),
-        'wa_forms_export'
+        admin_url('admin-post.php?action=alchemy_forms_export' . ($form_id ? '&form_id=' . $form_id : '')),
+        'alchemy_forms_export'
     );
     ?>
     <div class="wrap">
-        <h1 class="wp-heading-inline"><?php esc_html_e('Form Entries', 'wa-forms'); ?></h1>
+        <h1 class="wp-heading-inline"><?php esc_html_e('Form Entries', 'alchemy-forms'); ?></h1>
         <?php if ($total > 0) : ?>
-            <a href="<?php echo esc_url($export_url); ?>" class="page-title-action"><?php esc_html_e('Export CSV', 'wa-forms'); ?></a>
+            <a href="<?php echo esc_url($export_url); ?>" class="page-title-action"><?php esc_html_e('Export CSV', 'alchemy-forms'); ?></a>
         <?php endif; ?>
         <hr class="wp-header-end">
 
         <?php if (isset($_GET['deleted'])) : ?>
-            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Entry deleted.', 'wa-forms'); ?></p></div>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Entry deleted.', 'alchemy-forms'); ?></p></div>
         <?php endif; ?>
 
         <form method="get" style="margin: 12px 0;">
             <input type="hidden" name="post_type" value="wa_form">
             <input type="hidden" name="page" value="wa-form-entries">
             <select name="form_id">
-                <option value="0"><?php esc_html_e('All forms', 'wa-forms'); ?></option>
+                <option value="0"><?php esc_html_e('All forms', 'alchemy-forms'); ?></option>
                 <?php foreach ($forms as $form) : ?>
                     <option value="<?php echo (int) $form->ID; ?>" <?php selected($form_id, $form->ID); ?>><?php echo esc_html($form->post_title); ?></option>
                 <?php endforeach; ?>
             </select>
-            <button class="button"><?php esc_html_e('Filter', 'wa-forms'); ?></button>
+            <button class="button"><?php esc_html_e('Filter', 'alchemy-forms'); ?></button>
         </form>
 
         <?php if (empty($entries)) : ?>
-            <p><?php esc_html_e('No entries yet. Once a form is submitted on the site, it will show up here.', 'wa-forms'); ?></p>
+            <p><?php esc_html_e('No entries yet. Once a form is submitted on the site, it will show up here.', 'alchemy-forms'); ?></p>
         <?php else : ?>
             <table class="widefat striped">
                 <thead>
                     <tr>
-                        <th><?php esc_html_e('Date', 'wa-forms'); ?></th>
-                        <th><?php esc_html_e('Form', 'wa-forms'); ?></th>
-                        <th><?php esc_html_e('Preview', 'wa-forms'); ?></th>
-                        <th style="width:120px;"><?php esc_html_e('Actions', 'wa-forms'); ?></th>
+                        <th><?php esc_html_e('Date', 'alchemy-forms'); ?></th>
+                        <th><?php esc_html_e('Form', 'alchemy-forms'); ?></th>
+                        <th><?php esc_html_e('Preview', 'alchemy-forms'); ?></th>
+                        <th style="width:120px;"><?php esc_html_e('Actions', 'alchemy-forms'); ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,8 +141,8 @@ function wa_forms_entries_page() {
                     $preview = implode(' · ', array_slice(array_filter(array_map('strval', array_values($data))), 0, 3));
                     $view    = admin_url('edit.php?post_type=wa_form&page=wa-form-entries&entry=' . (int) $entry->id);
                     $delete  = wp_nonce_url(
-                        admin_url('admin-post.php?action=wa_forms_delete_entry&entry=' . (int) $entry->id . ($form_id ? '&form_id=' . $form_id : '')),
-                        'wa_forms_delete_' . (int) $entry->id
+                        admin_url('admin-post.php?action=alchemy_forms_delete_entry&entry=' . (int) $entry->id . ($form_id ? '&form_id=' . $form_id : '')),
+                        'alchemy_forms_delete_' . (int) $entry->id
                     );
                 ?>
                     <tr>
@@ -150,8 +150,8 @@ function wa_forms_entries_page() {
                         <td><?php echo esc_html(get_the_title((int) $entry->form_id) ?: '#' . (int) $entry->form_id); ?></td>
                         <td><?php echo esc_html(wp_html_excerpt($preview, 90, '…')); ?></td>
                         <td>
-                            <a href="<?php echo esc_url($view); ?>"><?php esc_html_e('View', 'wa-forms'); ?></a> |
-                            <a href="<?php echo esc_url($delete); ?>" style="color:#b32d2e;" onclick="return confirm('<?php echo esc_js(__('Delete this entry? This cannot be undone.', 'wa-forms')); ?>');"><?php esc_html_e('Delete', 'wa-forms'); ?></a>
+                            <a href="<?php echo esc_url($view); ?>"><?php esc_html_e('View', 'alchemy-forms'); ?></a> |
+                            <a href="<?php echo esc_url($delete); ?>" style="color:#b32d2e;" onclick="return confirm('<?php echo esc_js(__('Delete this entry? This cannot be undone.', 'alchemy-forms')); ?>');"><?php esc_html_e('Delete', 'alchemy-forms'); ?></a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -175,25 +175,25 @@ function wa_forms_entries_page() {
     <?php
 }
 
-function wa_forms_render_single_entry($entry_id) {
+function alchemy_forms_render_single_entry($entry_id) {
     global $wpdb;
-    $table = wa_forms_entries_table();
+    $table = alchemy_forms_entries_table();
     $entry = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $entry_id));
     $back  = admin_url('edit.php?post_type=wa_form&page=wa-form-entries');
 
     if (!$entry) {
-        echo '<div class="wrap"><h1>' . esc_html__('Entry not found', 'wa-forms') . '</h1><p><a href="' . esc_url($back) . '">&larr; ' . esc_html__('Back to entries', 'wa-forms') . '</a></p></div>';
+        echo '<div class="wrap"><h1>' . esc_html__('Entry not found', 'alchemy-forms') . '</h1><p><a href="' . esc_url($back) . '">&larr; ' . esc_html__('Back to entries', 'alchemy-forms') . '</a></p></div>';
         return;
     }
     $data = json_decode($entry->data, true);
     if (!is_array($data)) $data = [];
     ?>
     <div class="wrap">
-        <h1><?php echo esc_html(get_the_title((int) $entry->form_id) ?: __('Entry', 'wa-forms')); ?> — <?php esc_html_e('Entry', 'wa-forms'); ?> #<?php echo (int) $entry->id; ?></h1>
-        <p><a href="<?php echo esc_url($back); ?>">&larr; <?php esc_html_e('Back to entries', 'wa-forms'); ?></a></p>
+        <h1><?php echo esc_html(get_the_title((int) $entry->form_id) ?: __('Entry', 'alchemy-forms')); ?> — <?php esc_html_e('Entry', 'alchemy-forms'); ?> #<?php echo (int) $entry->id; ?></h1>
+        <p><a href="<?php echo esc_url($back); ?>">&larr; <?php esc_html_e('Back to entries', 'alchemy-forms'); ?></a></p>
         <table class="widefat striped" style="max-width:800px;">
             <tbody>
-                <tr><th style="width:260px;"><?php esc_html_e('Submitted', 'wa-forms'); ?></th><td><?php echo esc_html(mysql2date('j M Y, g:ia', $entry->submitted_at)); ?></td></tr>
+                <tr><th style="width:260px;"><?php esc_html_e('Submitted', 'alchemy-forms'); ?></th><td><?php echo esc_html(mysql2date('j M Y, g:ia', $entry->submitted_at)); ?></td></tr>
                 <?php foreach ($data as $label => $value) : ?>
                     <tr>
                         <th><?php echo esc_html($label); ?></th>
@@ -215,13 +215,13 @@ function wa_forms_render_single_entry($entry_id) {
 /* -------------------------------------------------------------------------
  * Delete entry
  * ---------------------------------------------------------------------- */
-add_action('admin_post_wa_forms_delete_entry', function () {
-    if (!current_user_can('manage_options')) wp_die(esc_html__('Not allowed.', 'wa-forms'));
+add_action('admin_post_alchemy_forms_delete_entry', function () {
+    if (!current_user_can('manage_options')) wp_die(esc_html__('Not allowed.', 'alchemy-forms'));
     $entry_id = isset($_GET['entry']) ? (int) $_GET['entry'] : 0;
-    check_admin_referer('wa_forms_delete_' . $entry_id);
+    check_admin_referer('alchemy_forms_delete_' . $entry_id);
 
     global $wpdb;
-    $wpdb->delete(wa_forms_entries_table(), ['id' => $entry_id], ['%d']);
+    $wpdb->delete(alchemy_forms_entries_table(), ['id' => $entry_id], ['%d']);
 
     $redirect = admin_url('edit.php?post_type=wa_form&page=wa-form-entries&deleted=1');
     if (!empty($_GET['form_id'])) $redirect .= '&form_id=' . (int) $_GET['form_id'];
@@ -232,12 +232,12 @@ add_action('admin_post_wa_forms_delete_entry', function () {
 /* -------------------------------------------------------------------------
  * CSV export
  * ---------------------------------------------------------------------- */
-add_action('admin_post_wa_forms_export', function () {
-    if (!current_user_can('manage_options')) wp_die(esc_html__('Not allowed.', 'wa-forms'));
-    check_admin_referer('wa_forms_export');
+add_action('admin_post_alchemy_forms_export', function () {
+    if (!current_user_can('manage_options')) wp_die(esc_html__('Not allowed.', 'alchemy-forms'));
+    check_admin_referer('alchemy_forms_export');
 
     global $wpdb;
-    $table   = wa_forms_entries_table();
+    $table   = alchemy_forms_entries_table();
     $form_id = isset($_GET['form_id']) ? (int) $_GET['form_id'] : 0;
 
     if ($form_id) {

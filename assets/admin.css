@@ -1,34 +1,34 @@
 /* -------------------------------------------------------------------------
  * Full-width builder screen
  * ---------------------------------------------------------------------- */
-body.wa-forms-builder #postbox-container-1 {
+body.alchemy-forms-builder #postbox-container-1 {
     display: none;
 }
-body.wa-forms-builder #post-body.columns-2 #post-body-content {
+body.alchemy-forms-builder #post-body.columns-2 #post-body-content {
     margin-right: 0;
     width: 100%;
 }
-body.wa-forms-builder .wrap > h1.wp-heading-inline,
-body.wa-forms-builder .wrap > hr.wp-header-end {
+body.alchemy-forms-builder .wrap > h1.wp-heading-inline,
+body.alchemy-forms-builder .wrap > hr.wp-header-end {
     display: none;
 }
-body.wa-forms-builder #titlediv {
+body.alchemy-forms-builder #titlediv {
     margin-bottom: 16px;
 }
-body.wa-forms-builder #titlediv #title {
+body.alchemy-forms-builder #titlediv #title {
     font-size: 22px;
     padding: 10px 12px;
 }
-body.wa-forms-builder #wa_form_fields {
+body.alchemy-forms-builder #wa_form_fields {
     border: none;
     box-shadow: none;
     background: transparent;
 }
-body.wa-forms-builder #wa_form_fields > .hndle,
-body.wa-forms-builder #wa_form_fields > .postbox-header {
+body.alchemy-forms-builder #wa_form_fields > .hndle,
+body.alchemy-forms-builder #wa_form_fields > .postbox-header {
     display: none;
 }
-body.wa-forms-builder #wa_form_fields > .inside {
+body.alchemy-forms-builder #wa_form_fields > .inside {
     margin: 0;
     padding: 0;
 }
