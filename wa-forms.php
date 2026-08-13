@@ -59,6 +59,19 @@ function wa_forms_noninput_field_types() {
 }
 
 /**
+ * Field types that can't be used as a condition's trigger field: file inputs
+ * expose only the browser's fake local path client-side, and checkbox groups
+ * have no single value, so neither can be evaluated consistently between the
+ * front-end (frontend.js's getFieldValue()) and the server-side condition
+ * lookup below. Shared by the builder (which field types are offered as a
+ * trigger) and the submission handler (which values are collected for
+ * evaluation), so both stay in agreement.
+ */
+function wa_forms_condition_ineligible_types() {
+    return array_merge(['file', 'checkbox'], wa_forms_noninput_field_types());
+}
+
+/**
  * Dashicon class per field type, used by the builder's palette and field cards.
  */
 function wa_forms_field_type_icons() {
@@ -150,6 +163,31 @@ function wa_forms_sanitize_hex($value, $fallback) {
 function wa_forms_sanitize_px($value, $fallback, $min = 0, $max = 999) {
     if (!isset($value) || !is_numeric($value)) return $fallback;
     return min($max, max($min, (int) $value));
+}
+
+/**
+ * Default style values, shared between the Style metabox (admin-editor.php)
+ * and the front-end resolver (render.php) so the two can't drift apart.
+ */
+function wa_forms_style_defaults() {
+    return [
+        'primary_color'        => '#2F4F3E',
+        'accent_color'         => '#C9A227',
+        'border_color'         => '#DCE3D9',
+        'placeholder_color'    => '#5B6B60',
+        'radius'               => 10,
+        'label_color'          => '#1F2A23',
+        'label_font_size'      => 14,
+        'field_gap'            => 20,
+        'input_padding'        => 10,
+        'input_bg_color'       => '#F6F8F3',
+        'button_bg_color'      => '#2F4F3E',
+        'button_hover_color'   => '#22392B',
+        'button_padding'       => 13,
+        'button_font_size'     => 15,
+        'container_bg_color'   => '#FFFFFF',
+        'container_bg_opacity' => 100,
+    ];
 }
 
 /**

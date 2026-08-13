@@ -108,8 +108,10 @@ jQuery(function ($) {
 
             $select.empty().append($('<option>', { value: '', text: 'Select a field…' }));
             items.forEach(function (other) {
-                // Step breaks and HTML blocks never collect a value, so they can't be a trigger.
-                if (!other.uid || other.uid === self.uid || other.type === 'page_break' || other.type === 'html') return;
+                // Mirrors wa_forms_condition_ineligible_types() in wa-forms.php: step
+                // breaks/HTML blocks collect no value, and checkbox/file fields can't
+                // be evaluated consistently between this dropdown and the server.
+                if (!other.uid || other.uid === self.uid || ['page_break', 'html', 'checkbox', 'file'].indexOf(other.type) !== -1) return;
                 var $opt = $('<option>', { value: other.uid, text: other.label || other.type });
                 $opt.attr('data-type', other.type);
                 $opt.attr('data-options', JSON.stringify(other.options));

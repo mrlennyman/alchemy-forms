@@ -70,12 +70,14 @@ function wa_forms_fields_metabox($post) {
     $option_types = wa_forms_option_field_types();
 
     // Lightweight list of every field, for populating each card's "which field" condition dropdown.
-    // Step breaks and HTML blocks never collect a value, so they can't be a trigger.
-    $noninput_types = wa_forms_noninput_field_types();
-    $all_fields     = [];
+    // Excludes types the submission handler can't evaluate as a trigger (see
+    // wa_forms_condition_ineligible_types()) so the builder never offers a
+    // condition that would silently fail server-side.
+    $ineligible_types = wa_forms_condition_ineligible_types();
+    $all_fields       = [];
     foreach ($fields as $f) {
         if (empty($f['uid'])) continue; // gets one on next save; not selectable as a trigger until then
-        if (isset($f['type']) && in_array($f['type'], $noninput_types, true)) continue;
+        if (isset($f['type']) && in_array($f['type'], $ineligible_types, true)) continue;
         $all_fields[] = [
             'uid'     => $f['uid'],
             'label'   => isset($f['label']) ? $f['label'] : '',
@@ -306,23 +308,25 @@ function wa_forms_style_metabox($post) {
     $settings = get_post_meta($post->ID, '_wa_form_settings', true);
     $style    = (is_array($settings) && isset($settings['style']) && is_array($settings['style'])) ? $settings['style'] : [];
 
-    $primary            = wa_forms_sanitize_hex($style['primary_color'] ?? '', '#2F4F3E');
-    $accent             = wa_forms_sanitize_hex($style['accent_color'] ?? '', '#C9A227');
-    $border             = wa_forms_sanitize_hex($style['border_color'] ?? '', '#DCE3D9');
-    $placeholder        = wa_forms_sanitize_hex($style['placeholder_color'] ?? '', '#5B6B60');
-    $radius             = wa_forms_sanitize_px($style['radius'] ?? null, 10);
+    $d = wa_forms_style_defaults();
+
+    $primary            = wa_forms_sanitize_hex($style['primary_color'] ?? '', $d['primary_color']);
+    $accent             = wa_forms_sanitize_hex($style['accent_color'] ?? '', $d['accent_color']);
+    $border             = wa_forms_sanitize_hex($style['border_color'] ?? '', $d['border_color']);
+    $placeholder        = wa_forms_sanitize_hex($style['placeholder_color'] ?? '', $d['placeholder_color']);
+    $radius             = wa_forms_sanitize_px($style['radius'] ?? null, $d['radius']);
     $font               = !empty($style['font']) ? $style['font'] : 'default';
-    $label_color        = wa_forms_sanitize_hex($style['label_color'] ?? '', '#1F2A23');
-    $label_font_size    = wa_forms_sanitize_px($style['label_font_size'] ?? null, 14);
-    $field_gap          = wa_forms_sanitize_px($style['field_gap'] ?? null, 20);
-    $input_padding      = wa_forms_sanitize_px($style['input_padding'] ?? null, 10);
-    $input_bg           = wa_forms_sanitize_hex($style['input_bg_color'] ?? '', '#F6F8F3');
-    $button_bg          = wa_forms_sanitize_hex($style['button_bg_color'] ?? '', '#2F4F3E');
-    $button_hover       = wa_forms_sanitize_hex($style['button_hover_color'] ?? '', '#22392B');
-    $button_padding     = wa_forms_sanitize_px($style['button_padding'] ?? null, 13);
-    $button_font_size   = wa_forms_sanitize_px($style['button_font_size'] ?? null, 15);
-    $container_bg       = wa_forms_sanitize_hex($style['container_bg_color'] ?? '', '#FFFFFF');
-    $container_opacity  = wa_forms_sanitize_px($style['container_bg_opacity'] ?? null, 100, 0, 100);
+    $label_color        = wa_forms_sanitize_hex($style['label_color'] ?? '', $d['label_color']);
+    $label_font_size    = wa_forms_sanitize_px($style['label_font_size'] ?? null, $d['label_font_size']);
+    $field_gap          = wa_forms_sanitize_px($style['field_gap'] ?? null, $d['field_gap']);
+    $input_padding      = wa_forms_sanitize_px($style['input_padding'] ?? null, $d['input_padding']);
+    $input_bg           = wa_forms_sanitize_hex($style['input_bg_color'] ?? '', $d['input_bg_color']);
+    $button_bg          = wa_forms_sanitize_hex($style['button_bg_color'] ?? '', $d['button_bg_color']);
+    $button_hover       = wa_forms_sanitize_hex($style['button_hover_color'] ?? '', $d['button_hover_color']);
+    $button_padding     = wa_forms_sanitize_px($style['button_padding'] ?? null, $d['button_padding']);
+    $button_font_size   = wa_forms_sanitize_px($style['button_font_size'] ?? null, $d['button_font_size']);
+    $container_bg       = wa_forms_sanitize_hex($style['container_bg_color'] ?? '', $d['container_bg_color']);
+    $container_opacity  = wa_forms_sanitize_px($style['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
     ?>
     <h4><?php esc_html_e('Colors', 'wa-forms'); ?></h4>
     <p>

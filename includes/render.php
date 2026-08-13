@@ -64,11 +64,12 @@ function wa_forms_render_shortcode($atts) {
         } else {
             $entry_data      = [];
             $attachment_path = '';
+            $attachment_id   = 0;
 
             // First pass: raw values by uid, used only to evaluate each field's
             // conditional visibility before the real per-field handling below.
             $condition_lookup = [];
-            $skip_types       = array_merge(['file', 'checkbox'], wa_forms_noninput_field_types());
+            $skip_types       = wa_forms_condition_ineligible_types();
             foreach ($fields as $cf) {
                 if (empty($cf['uid']) || in_array($cf['type'], $skip_types, true)) continue;
                 $raw = isset($_POST[$cf['name']]) ? wp_unslash($_POST[$cf['name']]) : '';
@@ -94,6 +95,7 @@ function wa_forms_render_shortcode($atts) {
                     if ($file_result) {
                         $entry_data[$label] = $file_result['url'];
                         $attachment_path    = $file_result['path'];
+                        $attachment_id      = $file_result['id'];
                     } else {
                         $entry_data[$label] = '';
                     }
@@ -175,6 +177,10 @@ function wa_forms_render_shortcode($atts) {
                 );
                 // Entry is stored either way — email failure shouldn't lose the submission.
                 $success = true;
+            } elseif ($attachment_id) {
+                // A file was uploaded and attached before a later field failed
+                // validation — don't leave it orphaned in the Media Library.
+                wp_delete_attachment($attachment_id, true);
             }
         }
     }
@@ -390,12 +396,14 @@ function wa_forms_handle_upload($input_name, $required, $label, array &$errors) 
     ], $upload['file']);
 
     $url = $upload['url'];
+    $id  = 0;
     if (!is_wp_error($attach_id) && $attach_id) {
         wp_update_attachment_metadata($attach_id, wp_generate_attachment_metadata($attach_id, $upload['file']));
         $url = wp_get_attachment_url($attach_id) ?: $url;
+        $id  = $attach_id;
     }
 
-    return ['url' => $url, 'path' => $upload['file']];
+    return ['url' => $url, 'path' => $upload['file'], 'id' => $id];
 }
 
 /* -------------------------------------------------------------------------
@@ -403,26 +411,27 @@ function wa_forms_handle_upload($input_name, $required, $label, array &$errors) 
  * ---------------------------------------------------------------------- */
 function wa_forms_resolve_style($style_settings) {
     if (!is_array($style_settings)) $style_settings = [];
+    $d = wa_forms_style_defaults();
 
-    $primary      = wa_forms_sanitize_hex($style_settings['primary_color'] ?? '', '#2F4F3E');
-    $accent       = wa_forms_sanitize_hex($style_settings['accent_color'] ?? '', '#C9A227');
-    $border       = wa_forms_sanitize_hex($style_settings['border_color'] ?? '', '#DCE3D9');
-    $placeholder  = wa_forms_sanitize_hex($style_settings['placeholder_color'] ?? '', '#5B6B60');
+    $primary      = wa_forms_sanitize_hex($style_settings['primary_color'] ?? '', $d['primary_color']);
+    $accent       = wa_forms_sanitize_hex($style_settings['accent_color'] ?? '', $d['accent_color']);
+    $border       = wa_forms_sanitize_hex($style_settings['border_color'] ?? '', $d['border_color']);
+    $placeholder  = wa_forms_sanitize_hex($style_settings['placeholder_color'] ?? '', $d['placeholder_color']);
     // Forms saved under the old preset system stored a slug (e.g. 'rounded') here;
     // wa_forms_sanitize_px() falls back cleanly when the value isn't numeric.
-    $radius       = wa_forms_sanitize_px($style_settings['radius'] ?? null, 10);
+    $radius       = wa_forms_sanitize_px($style_settings['radius'] ?? null, $d['radius']);
 
-    $label_color       = wa_forms_sanitize_hex($style_settings['label_color'] ?? '', '#1F2A23');
-    $label_font_size   = wa_forms_sanitize_px($style_settings['label_font_size'] ?? null, 14);
-    $field_gap         = wa_forms_sanitize_px($style_settings['field_gap'] ?? null, 20);
-    $input_padding     = wa_forms_sanitize_px($style_settings['input_padding'] ?? null, 10);
-    $input_bg          = wa_forms_sanitize_hex($style_settings['input_bg_color'] ?? '', '#F6F8F3');
-    $button_bg         = wa_forms_sanitize_hex($style_settings['button_bg_color'] ?? '', '#2F4F3E');
-    $button_hover      = wa_forms_sanitize_hex($style_settings['button_hover_color'] ?? '', '#22392B');
-    $button_padding    = wa_forms_sanitize_px($style_settings['button_padding'] ?? null, 13);
-    $button_font_size  = wa_forms_sanitize_px($style_settings['button_font_size'] ?? null, 15);
-    $container_bg      = wa_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', '#FFFFFF');
-    $container_opacity = wa_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, 100, 0, 100);
+    $label_color       = wa_forms_sanitize_hex($style_settings['label_color'] ?? '', $d['label_color']);
+    $label_font_size   = wa_forms_sanitize_px($style_settings['label_font_size'] ?? null, $d['label_font_size']);
+    $field_gap         = wa_forms_sanitize_px($style_settings['field_gap'] ?? null, $d['field_gap']);
+    $input_padding     = wa_forms_sanitize_px($style_settings['input_padding'] ?? null, $d['input_padding']);
+    $input_bg          = wa_forms_sanitize_hex($style_settings['input_bg_color'] ?? '', $d['input_bg_color']);
+    $button_bg         = wa_forms_sanitize_hex($style_settings['button_bg_color'] ?? '', $d['button_bg_color']);
+    $button_hover      = wa_forms_sanitize_hex($style_settings['button_hover_color'] ?? '', $d['button_hover_color']);
+    $button_padding    = wa_forms_sanitize_px($style_settings['button_padding'] ?? null, $d['button_padding']);
+    $button_font_size  = wa_forms_sanitize_px($style_settings['button_font_size'] ?? null, $d['button_font_size']);
+    $container_bg      = wa_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', $d['container_bg_color']);
+    $container_opacity = wa_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
 
     [$cr, $cg, $cb] = wa_forms_hex_to_rgb($container_bg);
     $container_rgba = sprintf('rgba(%d, %d, %d, %s)', $cr, $cg, $cb, $container_opacity / 100);
