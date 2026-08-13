@@ -227,9 +227,11 @@ function alchemy_forms_map_nf_import($data, $parts) {
         }
     }
 
-    $fields      = [];
-    $key_to_uid  = [];
-    $submit_text = '';
+    $fields       = [];
+    $key_to_uid   = [];
+    $key_to_type  = [];
+    $key_to_label = [];
+    $submit_text  = '';
     $current_part = null;
 
     foreach ($ordered_keys as $entry) {
@@ -268,7 +270,9 @@ function alchemy_forms_map_nf_import($data, $parts) {
         $type  = $type_map[$nf_type];
         $width = ((int) $entry['width'] < 100) ? 'half' : 'full';
         $uid   = wp_generate_uuid4();
-        $key_to_uid[$nf_key] = $uid;
+        $key_to_uid[$nf_key]   = $uid;
+        $key_to_type[$nf_key]  = $type;
+        $key_to_label[$nf_key] = $label !== '' ? $label : ucfirst($type);
 
         $field = [
             'label'      => $label !== '' ? $label : ucfirst($type),
@@ -311,6 +315,18 @@ function alchemy_forms_map_nf_import($data, $parts) {
         $value       = isset($when['value']) ? (string) $when['value'] : '';
 
         if (!isset($key_to_uid[$trigger_key])) continue; // trigger field wasn't imported
+
+        // A checkbox or file trigger can't be evaluated consistently between
+        // the front-end and the server (see alchemy_forms_condition_ineligible_types()
+        // in alchemy-forms.php) — importing one anyway would silently drop the
+        // dependent field's answers on every submission, so skip it here too.
+        $trigger_type = isset($key_to_type[$trigger_key]) ? $key_to_type[$trigger_key] : '';
+        if (in_array($trigger_type, alchemy_forms_condition_ineligible_types(), true)) {
+            $trigger_label = isset($key_to_label[$trigger_key]) ? $key_to_label[$trigger_key] : __('(untitled)', 'alchemy-forms');
+            /* translators: %s: field label */
+            $summary[] = sprintf(__('A condition triggered by "%s" was skipped (checkbox/file fields can\'t be used as a condition trigger); the affected field will always show.', 'alchemy-forms'), $trigger_label);
+            continue;
+        }
 
         foreach ($rule['then'] as $action) {
             if (empty($action['trigger']) || $action['trigger'] !== 'show_field' || empty($action['key'])) continue;

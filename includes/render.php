@@ -41,7 +41,36 @@ function alchemy_forms_render_shortcode($atts) {
         $f['_step'] = $step;
     }
     unset($f);
-    $step_count = $step + 1;
+
+    // Group fields by their raw step number, skipping page_break markers
+    // themselves (they only mark where one step ends and the next begins). A
+    // leading, trailing, or consecutive page_break leaves some raw step
+    // numbers with no fields in them, which would otherwise never get
+    // rendered — so re-index sequentially to match what will actually appear
+    // in the DOM, and remap _step/$step_titles the same way. Without this,
+    // $step_count and $first_error_step (used below) can point at a step
+    // that doesn't exist, leaving the last real step without a Submit button
+    // or reopening the form on the wrong step after a validation error.
+    $raw_steps = [];
+    foreach ($fields as $field) {
+        if ($field['type'] === 'page_break') continue;
+        $raw_steps[$field['_step']][] = $field;
+    }
+    ksort($raw_steps);
+    $step_remap = array_flip(array_keys($raw_steps));
+    $steps      = array_values($raw_steps);
+    $step_count = count($steps);
+
+    $remapped_titles = [];
+    foreach ($step_remap as $raw => $new) {
+        $remapped_titles[$new] = isset($step_titles[$raw]) ? $step_titles[$raw] : '';
+    }
+    $step_titles = $remapped_titles;
+
+    foreach ($fields as &$f) {
+        $f['_step'] = isset($step_remap[$f['_step']]) ? $step_remap[$f['_step']] : 0;
+    }
+    unset($f);
 
     $style_settings = (isset($settings['style']) && is_array($settings['style'])) ? $settings['style'] : [];
     $style          = alchemy_forms_resolve_style($style_settings);
@@ -62,9 +91,9 @@ function alchemy_forms_render_shortcode($atts) {
         } elseif (!empty($_POST['wa_website_hp'])) {
             $success = true; // Honeypot: pretend it worked, save/send nothing.
         } else {
-            $entry_data      = [];
-            $attachment_path = '';
-            $attachment_id   = 0;
+            $entry_data       = [];
+            $attachment_paths = []; // every file uploaded this submission, not just the last field's
+            $attachment_ids   = [];
 
             // First pass: raw values by uid, used only to evaluate each field's
             // conditional visibility before the real per-field handling below.
@@ -94,8 +123,8 @@ function alchemy_forms_render_shortcode($atts) {
                     $file_result = alchemy_forms_handle_upload($name, !empty($field['required']), $label, $errors);
                     if ($file_result) {
                         $entry_data[$label] = $file_result['url'];
-                        $attachment_path    = $file_result['path'];
-                        $attachment_id      = $file_result['id'];
+                        $attachment_paths[] = $file_result['path'];
+                        if ($file_result['id']) $attachment_ids[] = $file_result['id'];
                     } else {
                         $entry_data[$label] = '';
                     }
@@ -173,14 +202,16 @@ function alchemy_forms_render_shortcode($atts) {
                     sprintf(__('New submission: %s', 'alchemy-forms'), $form->post_title),
                     $body,
                     [],
-                    $attachment_path ? [$attachment_path] : []
+                    $attachment_paths
                 );
                 // Entry is stored either way — email failure shouldn't lose the submission.
                 $success = true;
-            } elseif ($attachment_id) {
-                // A file was uploaded and attached before a later field failed
-                // validation — don't leave it orphaned in the Media Library.
-                wp_delete_attachment($attachment_id, true);
+            } elseif ($attachment_ids) {
+                // Files were uploaded and attached before a later field failed
+                // validation — don't leave any of them orphaned in the Media Library.
+                foreach ($attachment_ids as $attachment_id) {
+                    wp_delete_attachment($attachment_id, true);
+                }
             }
         }
     }
@@ -224,16 +255,7 @@ function alchemy_forms_render_shortcode($atts) {
 
                     <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
 
-                <?php else :
-                    // Group fields by step (page_break markers themselves render nothing —
-                    // they only exist to mark where one step ends and the next begins).
-                    $steps = [];
-                    foreach ($fields as $field) {
-                        if ($field['type'] === 'page_break') continue;
-                        $steps[$field['_step']][] = $field;
-                    }
-                    ksort($steps);
-                    ?>
+                <?php else : ?>
                     <div class="wa-form-progress" data-label-template="<?php echo esc_attr(__('Step {n} of {total}', 'alchemy-forms')); ?>">
                         <div class="wa-form-progress-label"></div>
                         <div class="wa-form-progress-bar"><div class="wa-form-progress-fill"></div></div>

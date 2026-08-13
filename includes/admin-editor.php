@@ -509,25 +509,26 @@ add_action('save_post_wa_form', function ($post_id) {
 
         $style_in  = (isset($s['style']) && is_array($s['style'])) ? $s['style'] : [];
         $font_keys = array_keys(alchemy_forms_font_presets());
+        $d         = alchemy_forms_style_defaults();
 
         $settings['style'] = [
-            'primary_color'        => alchemy_forms_sanitize_hex($style_in['primary_color'] ?? '', '#2F4F3E'),
-            'accent_color'         => alchemy_forms_sanitize_hex($style_in['accent_color'] ?? '', '#C9A227'),
-            'border_color'         => alchemy_forms_sanitize_hex($style_in['border_color'] ?? '', '#DCE3D9'),
-            'placeholder_color'    => alchemy_forms_sanitize_hex($style_in['placeholder_color'] ?? '', '#5B6B60'),
-            'radius'               => alchemy_forms_sanitize_px($style_in['radius'] ?? null, 10),
+            'primary_color'        => alchemy_forms_sanitize_hex($style_in['primary_color'] ?? '', $d['primary_color']),
+            'accent_color'         => alchemy_forms_sanitize_hex($style_in['accent_color'] ?? '', $d['accent_color']),
+            'border_color'         => alchemy_forms_sanitize_hex($style_in['border_color'] ?? '', $d['border_color']),
+            'placeholder_color'    => alchemy_forms_sanitize_hex($style_in['placeholder_color'] ?? '', $d['placeholder_color']),
+            'radius'               => alchemy_forms_sanitize_px($style_in['radius'] ?? null, $d['radius']),
             'font'                 => (isset($style_in['font']) && in_array($style_in['font'], $font_keys, true)) ? $style_in['font'] : 'default',
-            'label_color'          => alchemy_forms_sanitize_hex($style_in['label_color'] ?? '', '#1F2A23'),
-            'label_font_size'      => alchemy_forms_sanitize_px($style_in['label_font_size'] ?? null, 14),
-            'field_gap'            => alchemy_forms_sanitize_px($style_in['field_gap'] ?? null, 20),
-            'input_padding'        => alchemy_forms_sanitize_px($style_in['input_padding'] ?? null, 10),
-            'input_bg_color'       => alchemy_forms_sanitize_hex($style_in['input_bg_color'] ?? '', '#F6F8F3'),
-            'button_bg_color'      => alchemy_forms_sanitize_hex($style_in['button_bg_color'] ?? '', '#2F4F3E'),
-            'button_hover_color'   => alchemy_forms_sanitize_hex($style_in['button_hover_color'] ?? '', '#22392B'),
-            'button_padding'       => alchemy_forms_sanitize_px($style_in['button_padding'] ?? null, 13),
-            'button_font_size'     => alchemy_forms_sanitize_px($style_in['button_font_size'] ?? null, 15),
-            'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', '#FFFFFF'),
-            'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, 100, 0, 100),
+            'label_color'          => alchemy_forms_sanitize_hex($style_in['label_color'] ?? '', $d['label_color']),
+            'label_font_size'      => alchemy_forms_sanitize_px($style_in['label_font_size'] ?? null, $d['label_font_size']),
+            'field_gap'            => alchemy_forms_sanitize_px($style_in['field_gap'] ?? null, $d['field_gap']),
+            'input_padding'        => alchemy_forms_sanitize_px($style_in['input_padding'] ?? null, $d['input_padding']),
+            'input_bg_color'       => alchemy_forms_sanitize_hex($style_in['input_bg_color'] ?? '', $d['input_bg_color']),
+            'button_bg_color'      => alchemy_forms_sanitize_hex($style_in['button_bg_color'] ?? '', $d['button_bg_color']),
+            'button_hover_color'   => alchemy_forms_sanitize_hex($style_in['button_hover_color'] ?? '', $d['button_hover_color']),
+            'button_padding'       => alchemy_forms_sanitize_px($style_in['button_padding'] ?? null, $d['button_padding']),
+            'button_font_size'     => alchemy_forms_sanitize_px($style_in['button_font_size'] ?? null, $d['button_font_size']),
+            'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', $d['container_bg_color']),
+            'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100),
         ];
     }
     update_post_meta($post_id, '_wa_form_settings', $settings);
