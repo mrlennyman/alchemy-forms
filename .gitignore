@@ -1,0 +1,19 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Dependencies (if the update checker or anything else gets added via Composer)
+/vendor/
+composer.lock
+
+# Build output
+*.zip
+
+# Local env
+.env

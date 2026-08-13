@@ -21,6 +21,23 @@ require_once ALCHEMY_FORMS_DIR . 'includes/entries.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/render.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/import.php';
 
+// Not on WordPress.org, so this is what gives client sites a real
+// "Update available" notice + one-click Update Now instead of needing a
+// manual zip re-upload every release (which is also what triggers the
+// nested-folder bug in WP core's "Replace current with uploaded" flow).
+require_once ALCHEMY_FORMS_DIR . 'includes/plugin-update-checker/plugin-update-checker.php';
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$alchemy_forms_update_checker = PucFactory::buildUpdateChecker(
+    'https://github.com/mrlennyman/alchemy-forms/',
+    __FILE__,
+    'alchemy-forms'
+);
+$alchemy_forms_update_checker->setBranch('main');
+// Releases are tagged (vX.Y.Z on main), not published via GitHub's separate
+// "Releases" feature, so release assets are left off — PUC builds the
+// update zip from the tagged source automatically.
+
 /**
  * Field types supported by the builder.
  * Each maps to render + sanitize behaviour in render.php.
