@@ -60,11 +60,11 @@ function alchemy_forms_import_page() {
                 <li><?php esc_html_e('Multi-step forms — each page becomes a step, with a progress indicator and Back/Next navigation.', 'alchemy-forms'); ?></li>
                 <li><?php esc_html_e('Informational HTML blocks and divider lines, converted to HTML content blocks.', 'alchemy-forms'); ?></li>
                 <li><?php esc_html_e('Simple "show this field only if another field equals a value" conditional logic — including on HTML blocks and across steps.', 'alchemy-forms'); ?></li>
-                <li><?php esc_html_e('The recipient email, submit button text, and success message.', 'alchemy-forms'); ?></li>
+                <li><?php esc_html_e('Recipient email(s), submit button text, and success message.', 'alchemy-forms'); ?></li>
             </ul>
             <p><strong><?php esc_html_e("What doesn't", 'alchemy-forms'); ?></strong></p>
             <ul style="list-style:disc;margin-left:1.5em;">
-                <li><?php esc_html_e('Only one recipient email and one condition per field are kept.', 'alchemy-forms'); ?></li>
+                <li><?php esc_html_e('Only one condition per field is kept.', 'alchemy-forms'); ?></li>
                 <li><?php esc_html_e('Conditions using a comparator other than "equals"/"is not" are skipped (the affected field will always show).', 'alchemy-forms'); ?></li>
             </ul>
         </div>
@@ -358,27 +358,19 @@ function alchemy_forms_map_nf_import($data, $parts) {
     unset($f);
 
     // Settings.
-    $recipient     = get_option('admin_email');
     $actions       = (isset($data['actions']) && is_array($data['actions'])) ? $data['actions'] : [];
     $email_actions = array_values(array_filter($actions, function ($a) {
         return is_array($a) && isset($a['type']) && $a['type'] === 'email';
     }));
 
-    if (!empty($email_actions)) {
-        $to        = isset($email_actions[0]['to']) ? trim((string) $email_actions[0]['to']) : '';
-        $addresses = array_map('trim', explode(',', $to));
-        $first     = isset($addresses[0]) ? $addresses[0] : '';
+    $to_strings = array_map(function ($a) {
+        return isset($a['to']) ? (string) $a['to'] : '';
+    }, $email_actions);
+    $recipient = alchemy_forms_parse_recipients(implode(',', $to_strings));
 
-        if ($first !== '' && $first !== '{wp:admin_email}' && is_email($first)) {
-            $recipient = $first;
-        }
-        if (count($addresses) > 1) {
-            $summary[] = __('Only the first recipient email was kept; the others from the original form were dropped.', 'alchemy-forms');
-        }
-        if (count($email_actions) > 1) {
-            /* translators: %d: number of extra email notifications dropped */
-            $summary[] = sprintf(__('%d extra email notification(s) from the original form were dropped; only one recipient is supported.', 'alchemy-forms'), count($email_actions) - 1);
-        }
+    if (count($email_actions) > 1) {
+        /* translators: %d: number of separate email notifications in the original form */
+        $summary[] = sprintf(__('This form had %d separate email notifications; their recipients were merged into one list, since only a single notification template is supported.', 'alchemy-forms'), count($email_actions));
     }
 
     $success_msg = __('Thanks — your submission has been received.', 'alchemy-forms');

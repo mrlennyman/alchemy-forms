@@ -285,13 +285,14 @@ function alchemy_forms_field_row($i, $f, $types, $icons = null, $all_fields = []
 function alchemy_forms_settings_metabox($post) {
     $settings = get_post_meta($post->ID, '_wa_form_settings', true);
     if (!is_array($settings)) $settings = [];
-    $recipient   = isset($settings['recipient']) ? $settings['recipient'] : get_option('admin_email');
+    $recipients  = alchemy_forms_parse_recipients(isset($settings['recipient']) ? $settings['recipient'] : '');
     $submit_text = isset($settings['submit_text']) ? $settings['submit_text'] : 'Submit';
     $success_msg = isset($settings['success_msg']) ? $settings['success_msg'] : "Thanks — your submission has been received.";
     ?>
     <p>
         <label for="wa_recipient"><strong><?php esc_html_e('Send submissions to', 'alchemy-forms'); ?></strong></label>
-        <input type="email" id="wa_recipient" name="wa_settings[recipient]" value="<?php echo esc_attr($recipient); ?>" class="widefat">
+        <input type="email" multiple id="wa_recipient" name="wa_settings[recipient]" value="<?php echo esc_attr(implode(', ', $recipients)); ?>" class="widefat">
+        <span class="description"><?php esc_html_e('One or more addresses, separated by commas.', 'alchemy-forms'); ?></span>
     </p>
     <p>
         <label for="wa_submit_text"><strong><?php esc_html_e('Submit button text', 'alchemy-forms'); ?></strong></label>
@@ -416,7 +417,7 @@ function alchemy_forms_usage_metabox($post) {
     ?>
     <p><?php esc_html_e('Add this form to any page or Beaver Builder text module:', 'alchemy-forms'); ?></p>
     <p><code>[wa_form id="<?php echo (int) $post->ID; ?>"]</code></p>
-    <p class="description"><?php esc_html_e('Uploads land in the Media Library. Entries are stored under Alchemy Forms → Entries and emailed to the recipient above.', 'alchemy-forms'); ?></p>
+    <p class="description"><?php esc_html_e('Uploads land in the Media Library. Entries are stored under Alchemy Forms → Entries and emailed to the recipient(s) above.', 'alchemy-forms'); ?></p>
     <?php
 }
 
@@ -499,11 +500,10 @@ add_action('save_post_wa_form', function ($post_id) {
 
     update_post_meta($post_id, '_wa_form_fields', $fields);
 
-    $settings = ['recipient' => get_option('admin_email'), 'submit_text' => 'Submit', 'success_msg' => ''];
+    $settings = ['recipient' => [get_option('admin_email')], 'submit_text' => 'Submit', 'success_msg' => ''];
     if (isset($_POST['wa_settings']) && is_array($_POST['wa_settings'])) {
         $s = wp_unslash($_POST['wa_settings']);
-        $recipient = isset($s['recipient']) ? sanitize_email($s['recipient']) : '';
-        $settings['recipient']   = is_email($recipient) ? $recipient : get_option('admin_email');
+        $settings['recipient']   = alchemy_forms_parse_recipients(isset($s['recipient']) ? $s['recipient'] : '');
         $settings['submit_text'] = isset($s['submit_text']) && $s['submit_text'] !== '' ? sanitize_text_field($s['submit_text']) : 'Submit';
         $settings['success_msg'] = isset($s['success_msg']) ? sanitize_textarea_field($s['success_msg']) : '';
 

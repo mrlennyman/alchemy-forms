@@ -183,6 +183,25 @@ function alchemy_forms_sanitize_px($value, $fallback, $min = 0, $max = 999) {
 }
 
 /**
+ * Parse a recipient setting into a list of valid email addresses. Accepts
+ * either the current comma/newline-separated string from the settings field,
+ * or an already-stored array (so old forms saved before this existed keep
+ * working without a migration). Falls back to the site admin email when
+ * nothing valid is left.
+ */
+function alchemy_forms_parse_recipients($value) {
+    $raw    = is_array($value) ? $value : preg_split('/[,\n]+/', (string) $value);
+    $emails = [];
+    foreach ($raw as $email) {
+        $email = sanitize_email(trim($email));
+        if ($email !== '' && is_email($email) && !in_array($email, $emails, true)) {
+            $emails[] = $email;
+        }
+    }
+    return $emails ? $emails : [get_option('admin_email')];
+}
+
+/**
  * Default style values, shared between the Style metabox (admin-editor.php)
  * and the front-end resolver (render.php) so the two can't drift apart.
  */

@@ -23,7 +23,7 @@ function alchemy_forms_render_shortcode($atts) {
 
     $settings = get_post_meta($form_id, '_wa_form_settings', true);
     if (!is_array($settings)) $settings = [];
-    $recipient   = !empty($settings['recipient']) && is_email($settings['recipient']) ? $settings['recipient'] : get_option('admin_email');
+    $recipient   = alchemy_forms_parse_recipients(isset($settings['recipient']) ? $settings['recipient'] : '');
     $submit_text = !empty($settings['submit_text']) ? $settings['submit_text'] : __('Submit', 'alchemy-forms');
     $success_msg = !empty($settings['success_msg']) ? $settings['success_msg'] : __('Thanks — your submission has been received.', 'alchemy-forms');
 
