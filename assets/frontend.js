@@ -51,10 +51,70 @@
         });
     }
 
+    function initSteps(form) {
+        var steps = Array.prototype.slice.call(form.querySelectorAll('.wa-form-step'));
+        if (steps.length < 2) return;
+
+        var progress      = form.querySelector('.wa-form-progress');
+        var progressFill  = form.querySelector('.wa-form-progress-fill');
+        var progressLabel = form.querySelector('.wa-form-progress-label');
+        var labelTemplate = (progress && progress.getAttribute('data-label-template')) || 'Step {n} of {total}';
+
+        function currentIndex() {
+            for (var i = 0; i < steps.length; i++) {
+                if (steps[i].classList.contains('wa-form-step--active')) return i;
+            }
+            return 0;
+        }
+
+        function showStep(index, scroll) {
+            steps.forEach(function (step, i) {
+                step.classList.toggle('wa-form-step--active', i === index);
+            });
+            if (progressFill) progressFill.style.width = Math.round(((index + 1) / steps.length) * 100) + '%';
+            if (progressLabel) {
+                progressLabel.textContent = labelTemplate.replace('{n}', index + 1).replace('{total}', steps.length);
+            }
+            if (scroll) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function validateStep(step) {
+            var valid = true;
+            step.querySelectorAll('input, select, textarea').forEach(function (el) {
+                if (el.disabled || el.closest('.wa-field--hidden')) return;
+                if (!el.checkValidity()) {
+                    el.reportValidity();
+                    valid = false;
+                }
+            });
+            return valid;
+        }
+
+        form.querySelectorAll('.wa-form-next').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var i = currentIndex();
+                if (!validateStep(steps[i])) return;
+                if (i < steps.length - 1) showStep(i + 1, true);
+            });
+        });
+
+        form.querySelectorAll('.wa-form-prev').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var i = currentIndex();
+                if (i > 0) showStep(i - 1, true);
+            });
+        });
+
+        var initial = parseInt(form.getAttribute('data-initial-step') || '0', 10);
+        if (isNaN(initial) || initial < 0 || initial >= steps.length) initial = 0;
+        showStep(initial, false);
+    }
+
     function init(form) {
         refresh(form);
         form.addEventListener('change', function () { refresh(form); });
         form.addEventListener('input', function () { refresh(form); });
+        initSteps(form);
     }
 
     document.addEventListener('DOMContentLoaded', function () {

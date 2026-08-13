@@ -70,9 +70,12 @@ function wa_forms_fields_metabox($post) {
     $option_types = wa_forms_option_field_types();
 
     // Lightweight list of every field, for populating each card's "which field" condition dropdown.
-    $all_fields = [];
+    // Step breaks and HTML blocks never collect a value, so they can't be a trigger.
+    $noninput_types = wa_forms_noninput_field_types();
+    $all_fields     = [];
     foreach ($fields as $f) {
         if (empty($f['uid'])) continue; // gets one on next save; not selectable as a trigger until then
+        if (isset($f['type']) && in_array($f['type'], $noninput_types, true)) continue;
         $all_fields[] = [
             'uid'     => $f['uid'],
             'label'   => isset($f['label']) ? $f['label'] : '',
@@ -120,13 +123,14 @@ function wa_forms_fields_metabox($post) {
 
     <?php foreach ($types as $key => $name) :
         $default_field = [
-            'label'      => sprintf(__('New %s', 'wa-forms'), $name),
+            'label'      => $key === 'page_break' ? '' : sprintf(__('New %s', 'wa-forms'), $name),
             'type'       => $key,
             'required'   => 0,
             'hide_label' => 0,
             'width'      => 'full',
             'options'    => in_array($key, $option_types, true) ? [__('Option 1', 'wa-forms'), __('Option 2', 'wa-forms')] : [],
             'uid'        => '',
+            'content'    => '',
             'condition'  => [],
         ];
     ?>
@@ -146,15 +150,22 @@ function wa_forms_field_row($i, $f, $types, $icons = null, $all_fields = []) {
     $hide_label   = !empty($f['hide_label']);
     $width        = (isset($f['width']) && $f['width'] === 'half') ? 'half' : 'full';
     $uid          = isset($f['uid']) ? $f['uid'] : '';
+    $content      = isset($f['content']) ? $f['content'] : '';
     $option_types = wa_forms_option_field_types();
     $options      = (isset($f['options']) && is_array($f['options'])) ? implode("\n", $f['options']) : '';
     $show_options = in_array($type, $option_types, true);
     $icon         = isset($icons[$type]) ? $icons[$type] : 'dashicons-admin-generic';
     $type_label   = isset($types[$type]) ? $types[$type] : $type;
-    $summary      = trim($type_label
-        . ($width === 'half' ? ' · ' . __('Half width', 'wa-forms') : '')
-        . ($required ? ' · ' . __('Required', 'wa-forms') : '')
-        . ($hide_label ? ' · ' . __('Label hidden', 'wa-forms') : ''));
+
+    $is_page_break = ($type === 'page_break');
+    $is_html       = ($type === 'html');
+    $show_width    = !$is_page_break;
+    $show_meta     = !$is_page_break && !$is_html;
+
+    $summary = trim($type_label
+        . ($show_width && $width === 'half' ? ' · ' . __('Half width', 'wa-forms') : '')
+        . ($show_meta && $required ? ' · ' . __('Required', 'wa-forms') : '')
+        . ($show_meta && $hide_label ? ' · ' . __('Label hidden', 'wa-forms') : ''));
 
     $condition            = (isset($f['condition']) && is_array($f['condition'])) ? $f['condition'] : [];
     $condition_enabled    = !empty($condition['field']);
@@ -166,7 +177,7 @@ function wa_forms_field_row($i, $f, $types, $icons = null, $all_fields = []) {
         if ($of['uid'] === $condition_field) { $condition_options = $of['options']; break; }
     }
     ?>
-    <div class="wa-field-item" data-type="<?php echo esc_attr($type); ?>">
+    <div class="wa-field-item<?php echo $is_page_break ? ' wa-field-item--page-break' : ''; ?>" data-type="<?php echo esc_attr($type); ?>">
         <div class="wa-field-card">
             <div class="wa-field-card-header">
                 <span class="wa-field-handle dashicons dashicons-menu" title="<?php esc_attr_e('Drag to reorder', 'wa-forms'); ?>"></span>
@@ -181,63 +192,88 @@ function wa_forms_field_row($i, $f, $types, $icons = null, $all_fields = []) {
             <div class="wa-field-card-body">
                 <input type="hidden" class="wa-field-type" name="wa_fields[<?php echo esc_attr($i); ?>][type]" value="<?php echo esc_attr($type); ?>">
                 <input type="hidden" class="wa-field-uid" name="wa_fields[<?php echo esc_attr($i); ?>][uid]" value="<?php echo esc_attr($uid); ?>">
-                <p>
-                    <label><?php esc_html_e('Label', 'wa-forms'); ?></label>
-                    <input type="text" class="wa-field-label widefat" name="wa_fields[<?php echo esc_attr($i); ?>][label]" value="<?php echo esc_attr($label); ?>" placeholder="<?php esc_attr_e('Field label', 'wa-forms'); ?>">
-                </p>
-                <p class="wa-field-row-inline">
-                    <label class="wa-field-width">
-                        <?php esc_html_e('Width', 'wa-forms'); ?>
-                        <select name="wa_fields[<?php echo esc_attr($i); ?>][width]">
-                            <option value="full" <?php selected($width, 'full'); ?>><?php esc_html_e('Full width', 'wa-forms'); ?></option>
-                            <option value="half" <?php selected($width, 'half'); ?>><?php esc_html_e('Half width', 'wa-forms'); ?></option>
-                        </select>
-                    </label>
-                    <label class="wa-field-required">
-                        <input type="checkbox" name="wa_fields[<?php echo esc_attr($i); ?>][required]" value="1" <?php checked($required); ?>>
-                        <?php esc_html_e('Required', 'wa-forms'); ?>
-                    </label>
-                    <label class="wa-field-required">
-                        <input type="checkbox" name="wa_fields[<?php echo esc_attr($i); ?>][hide_label]" value="1" <?php checked($hide_label); ?>>
-                        <?php esc_html_e('Hide label', 'wa-forms'); ?>
-                    </label>
-                </p>
-                <p class="wa-field-options" <?php echo $show_options ? '' : 'style="display:none"'; ?>>
-                    <label><?php esc_html_e('Options (one per line)', 'wa-forms'); ?></label>
-                    <textarea name="wa_fields[<?php echo esc_attr($i); ?>][options]" rows="3" placeholder="<?php esc_attr_e('One option per line', 'wa-forms'); ?>"><?php echo esc_textarea($options); ?></textarea>
-                </p>
-                <p class="wa-field-condition-toggle">
-                    <label class="wa-field-required">
-                        <input type="checkbox" class="wa-condition-enable" <?php checked($condition_enabled); ?>>
-                        <?php esc_html_e('Only show this field based on another field', 'wa-forms'); ?>
-                    </label>
-                </p>
-                <div class="wa-field-condition" <?php echo $condition_enabled ? '' : 'style="display:none"'; ?>>
-                    <p class="wa-field-row-inline">
-                        <select class="wa-condition-field" name="wa_fields[<?php echo esc_attr($i); ?>][condition][field]" <?php echo $condition_enabled ? '' : 'disabled'; ?>>
-                            <option value=""><?php esc_html_e('Select a field…', 'wa-forms'); ?></option>
-                            <?php foreach ($all_fields as $of) :
-                                if ($of['uid'] === $uid) continue;
-                                $of_label = $of['label'] !== '' ? $of['label'] : (isset($types[$of['type']]) ? $types[$of['type']] : $of['type']);
-                            ?>
-                                <option value="<?php echo esc_attr($of['uid']); ?>" data-type="<?php echo esc_attr($of['type']); ?>" data-options="<?php echo esc_attr(wp_json_encode($of['options'])); ?>" <?php selected($condition_field, $of['uid']); ?>><?php echo esc_html($of_label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <select class="wa-condition-comparator" name="wa_fields[<?php echo esc_attr($i); ?>][condition][comparator]" <?php echo $condition_enabled ? '' : 'disabled'; ?>>
-                            <?php foreach (wa_forms_condition_comparators() as $key => $comp_label) : ?>
-                                <option value="<?php echo esc_attr($key); ?>" <?php selected($condition_comparator, $key); ?>><?php echo esc_html($comp_label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </p>
+
+                <?php if ($is_page_break) : ?>
                     <p>
-                        <input type="text" class="wa-condition-value-text" name="wa_fields[<?php echo esc_attr($i); ?>][condition][value]" value="<?php echo esc_attr($condition_value); ?>" placeholder="<?php esc_attr_e('Value', 'wa-forms'); ?>" <?php echo ($condition_enabled && empty($condition_options)) ? '' : 'disabled'; ?>>
-                        <select class="wa-condition-value-select" name="wa_fields[<?php echo esc_attr($i); ?>][condition][value]" <?php echo ($condition_enabled && !empty($condition_options)) ? '' : 'disabled'; ?>>
-                            <?php foreach ($condition_options as $opt) : ?>
-                                <option value="<?php echo esc_attr($opt); ?>" <?php selected($condition_value, $opt); ?>><?php echo esc_html($opt); ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label><?php esc_html_e('Step title', 'wa-forms'); ?></label>
+                        <input type="text" class="wa-field-label widefat" name="wa_fields[<?php echo esc_attr($i); ?>][label]" value="<?php echo esc_attr($label); ?>" placeholder="<?php esc_attr_e('e.g. Contact Details', 'wa-forms'); ?>">
                     </p>
-                </div>
+
+                <?php else : ?>
+
+                    <?php if ($is_html) : ?>
+                        <p>
+                            <label><?php esc_html_e('Content (HTML allowed)', 'wa-forms'); ?></label>
+                            <textarea class="wa-field-label widefat" name="wa_fields[<?php echo esc_attr($i); ?>][content]" rows="4" placeholder="<?php esc_attr_e('Text or HTML to display', 'wa-forms'); ?>"><?php echo esc_textarea($content); ?></textarea>
+                        </p>
+                    <?php else : ?>
+                        <p>
+                            <label><?php esc_html_e('Label', 'wa-forms'); ?></label>
+                            <input type="text" class="wa-field-label widefat" name="wa_fields[<?php echo esc_attr($i); ?>][label]" value="<?php echo esc_attr($label); ?>" placeholder="<?php esc_attr_e('Field label', 'wa-forms'); ?>">
+                        </p>
+                    <?php endif; ?>
+
+                    <p class="wa-field-row-inline">
+                        <label class="wa-field-width">
+                            <?php esc_html_e('Width', 'wa-forms'); ?>
+                            <select name="wa_fields[<?php echo esc_attr($i); ?>][width]">
+                                <option value="full" <?php selected($width, 'full'); ?>><?php esc_html_e('Full width', 'wa-forms'); ?></option>
+                                <option value="half" <?php selected($width, 'half'); ?>><?php esc_html_e('Half width', 'wa-forms'); ?></option>
+                            </select>
+                        </label>
+                        <?php if (!$is_html) : ?>
+                            <label class="wa-field-required">
+                                <input type="checkbox" name="wa_fields[<?php echo esc_attr($i); ?>][required]" value="1" <?php checked($required); ?>>
+                                <?php esc_html_e('Required', 'wa-forms'); ?>
+                            </label>
+                            <label class="wa-field-required">
+                                <input type="checkbox" name="wa_fields[<?php echo esc_attr($i); ?>][hide_label]" value="1" <?php checked($hide_label); ?>>
+                                <?php esc_html_e('Hide label', 'wa-forms'); ?>
+                            </label>
+                        <?php endif; ?>
+                    </p>
+
+                    <?php if ($show_options) : ?>
+                        <p class="wa-field-options">
+                            <label><?php esc_html_e('Options (one per line)', 'wa-forms'); ?></label>
+                            <textarea name="wa_fields[<?php echo esc_attr($i); ?>][options]" rows="3" placeholder="<?php esc_attr_e('One option per line', 'wa-forms'); ?>"><?php echo esc_textarea($options); ?></textarea>
+                        </p>
+                    <?php endif; ?>
+
+                    <p class="wa-field-condition-toggle">
+                        <label class="wa-field-required">
+                            <input type="checkbox" class="wa-condition-enable" <?php checked($condition_enabled); ?>>
+                            <?php esc_html_e('Only show this field based on another field', 'wa-forms'); ?>
+                        </label>
+                    </p>
+                    <div class="wa-field-condition" <?php echo $condition_enabled ? '' : 'style="display:none"'; ?>>
+                        <p class="wa-field-row-inline">
+                            <select class="wa-condition-field" name="wa_fields[<?php echo esc_attr($i); ?>][condition][field]" <?php echo $condition_enabled ? '' : 'disabled'; ?>>
+                                <option value=""><?php esc_html_e('Select a field…', 'wa-forms'); ?></option>
+                                <?php foreach ($all_fields as $of) :
+                                    if ($of['uid'] === $uid) continue;
+                                    $of_label = $of['label'] !== '' ? $of['label'] : (isset($types[$of['type']]) ? $types[$of['type']] : $of['type']);
+                                ?>
+                                    <option value="<?php echo esc_attr($of['uid']); ?>" data-type="<?php echo esc_attr($of['type']); ?>" data-options="<?php echo esc_attr(wp_json_encode($of['options'])); ?>" <?php selected($condition_field, $of['uid']); ?>><?php echo esc_html($of_label); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <select class="wa-condition-comparator" name="wa_fields[<?php echo esc_attr($i); ?>][condition][comparator]" <?php echo $condition_enabled ? '' : 'disabled'; ?>>
+                                <?php foreach (wa_forms_condition_comparators() as $key => $comp_label) : ?>
+                                    <option value="<?php echo esc_attr($key); ?>" <?php selected($condition_comparator, $key); ?>><?php echo esc_html($comp_label); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </p>
+                        <p>
+                            <input type="text" class="wa-condition-value-text" name="wa_fields[<?php echo esc_attr($i); ?>][condition][value]" value="<?php echo esc_attr($condition_value); ?>" placeholder="<?php esc_attr_e('Value', 'wa-forms'); ?>" <?php echo ($condition_enabled && empty($condition_options)) ? '' : 'disabled'; ?>>
+                            <select class="wa-condition-value-select" name="wa_fields[<?php echo esc_attr($i); ?>][condition][value]" <?php echo ($condition_enabled && !empty($condition_options)) ? '' : 'disabled'; ?>>
+                                <?php foreach ($condition_options as $opt) : ?>
+                                    <option value="<?php echo esc_attr($opt); ?>" <?php selected($condition_value, $opt); ?>><?php echo esc_html($opt); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </p>
+                    </div>
+
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -393,9 +429,18 @@ add_action('save_post_wa_form', function ($post_id) {
     $fields       = [];
     if (isset($_POST['wa_fields']) && is_array($_POST['wa_fields'])) {
         foreach (wp_unslash($_POST['wa_fields']) as $f) {
-            $label = isset($f['label']) ? sanitize_text_field($f['label']) : '';
-            if ($label === '') continue;
-            $type = (isset($f['type']) && in_array($f['type'], $types, true)) ? $f['type'] : 'text';
+            $type    = (isset($f['type']) && in_array($f['type'], $types, true)) ? $f['type'] : 'text';
+            $label   = isset($f['label']) ? sanitize_text_field($f['label']) : '';
+            $content = isset($f['content']) ? wp_kses_post($f['content']) : '';
+
+            // Label is how every normal field is kept from being an empty leftover
+            // row, but html fields don't use it (content instead) and a page break's
+            // title is optional, so each type needs its own "keep this row?" rule.
+            if ($type === 'html') {
+                if ($content === '') continue;
+            } elseif ($type !== 'page_break' && $label === '') {
+                continue;
+            }
 
             $field = [
                 'label'      => $label,
@@ -405,6 +450,10 @@ add_action('save_post_wa_form', function ($post_id) {
                 'width'      => (isset($f['width']) && $f['width'] === 'half') ? 'half' : 'full',
                 'uid'        => (!empty($f['uid']) && is_string($f['uid'])) ? sanitize_text_field($f['uid']) : wp_generate_uuid4(),
             ];
+
+            if ($type === 'html') {
+                $field['content'] = $content;
+            }
 
             if (in_array($type, $option_types, true)) {
                 $raw_options = isset($f['options']) ? (string) $f['options'] : '';

@@ -108,7 +108,8 @@ jQuery(function ($) {
 
             $select.empty().append($('<option>', { value: '', text: 'Select a field…' }));
             items.forEach(function (other) {
-                if (!other.uid || other.uid === self.uid) return;
+                // Step breaks and HTML blocks never collect a value, so they can't be a trigger.
+                if (!other.uid || other.uid === self.uid || other.type === 'page_break' || other.type === 'html') return;
                 var $opt = $('<option>', { value: other.uid, text: other.label || other.type });
                 $opt.attr('data-type', other.type);
                 $opt.attr('data-options', JSON.stringify(other.options));

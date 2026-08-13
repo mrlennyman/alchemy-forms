@@ -3,7 +3,7 @@
  * Plugin Name: WA Forms
  * Plugin URI:  https://websitealchemy.co.nz
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     1.0.7
+ * Version:     1.1.0
  * Author:      Website Alchemy
  * Author URI:  https://websitealchemy.co.nz
  * License:     GPL-2.0-or-later
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('WA_FORMS_VERSION', '1.0.7');
+define('WA_FORMS_VERSION', '1.1.0');
 define('WA_FORMS_DIR', plugin_dir_path(__FILE__));
 define('WA_FORMS_URL', plugin_dir_url(__FILE__));
 
@@ -38,6 +38,8 @@ function wa_forms_field_types() {
         'radio'    => __('Radio buttons', 'wa-forms'),
         'checkbox' => __('Checkboxes', 'wa-forms'),
         'file'     => __('File upload', 'wa-forms'),
+        'html'     => __('HTML / Text Block', 'wa-forms'),
+        'page_break' => __('Step Break', 'wa-forms'),
     ];
 }
 
@@ -46,6 +48,14 @@ function wa_forms_field_types() {
  */
 function wa_forms_option_field_types() {
     return ['select', 'radio', 'checkbox'];
+}
+
+/**
+ * Field types that collect no submitted value (nothing to validate/store),
+ * used for the front-end submission loop and the condition-lookup pass.
+ */
+function wa_forms_noninput_field_types() {
+    return ['page_break', 'html'];
 }
 
 /**
@@ -64,6 +74,8 @@ function wa_forms_field_type_icons() {
         'radio'    => 'dashicons-marker',
         'checkbox' => 'dashicons-forms',
         'file'     => 'dashicons-upload',
+        'html'     => 'dashicons-editor-code',
+        'page_break' => 'dashicons-editor-break',
     ];
 }
 

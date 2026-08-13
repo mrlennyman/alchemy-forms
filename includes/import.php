@@ -57,14 +57,15 @@ function wa_forms_import_page() {
             <p><strong><?php esc_html_e('What carries over', 'wa-forms'); ?></strong></p>
             <ul style="list-style:disc;margin-left:1.5em;">
                 <li><?php esc_html_e('Text, email, phone, number, date, paragraph, dropdown, radio, and checkbox fields, with their labels, required flags, and options.', 'wa-forms'); ?></li>
-                <li><?php esc_html_e('Simple "show this field only if another field equals a value" conditional logic.', 'wa-forms'); ?></li>
+                <li><?php esc_html_e('Multi-step forms — each page becomes a step, with a progress indicator and Back/Next navigation.', 'wa-forms'); ?></li>
+                <li><?php esc_html_e('Informational HTML blocks and divider lines, converted to HTML content blocks.', 'wa-forms'); ?></li>
+                <li><?php esc_html_e('Simple "show this field only if another field equals a value" conditional logic — including on HTML blocks and across steps.', 'wa-forms'); ?></li>
                 <li><?php esc_html_e('The recipient email, submit button text, and success message.', 'wa-forms'); ?></li>
             </ul>
             <p><strong><?php esc_html_e("What doesn't", 'wa-forms'); ?></strong></p>
             <ul style="list-style:disc;margin-left:1.5em;">
-                <li><?php esc_html_e("Multi-step forms (forms with more than one page) — not supported yet, and will be refused rather than imported broken.", 'wa-forms'); ?></li>
-                <li><?php esc_html_e('Informational HTML blocks and divider lines have no equivalent and are skipped.', 'wa-forms'); ?></li>
                 <li><?php esc_html_e('Only one recipient email and one condition per field are kept.', 'wa-forms'); ?></li>
+                <li><?php esc_html_e('Conditions using a comparator other than "equals"/"is not" are skipped (the affected field will always show).', 'wa-forms'); ?></li>
             </ul>
         </div>
 
@@ -134,9 +135,6 @@ function wa_forms_process_import() {
     }
 
     $parts = (isset($data['settings']['formContentData']) && is_array($data['settings']['formContentData'])) ? $data['settings']['formContentData'] : [];
-    if (count($parts) > 1) {
-        return __("This form has multiple steps (pages), which WA Forms doesn't support yet — import isn't available for it.", 'wa-forms');
-    }
 
     $result = wa_forms_map_nf_import($data, $parts);
 
@@ -175,6 +173,8 @@ function wa_forms_nf_type_map() {
         'number'       => 'number',
         'listradio'    => 'radio',
         'listcheckbox' => 'checkbox',
+        'html'         => 'html',
+        'hr'           => 'html',
     ];
 }
 
@@ -187,29 +187,58 @@ function wa_forms_map_nf_import($data, $parts) {
     $option_types = wa_forms_option_field_types();
     $summary      = [];
 
-    // Cell width (percentage) per field key, from the single allowed layout part.
-    $field_widths = [];
-    if (!empty($parts[0]['formContentData']) && is_array($parts[0]['formContentData'])) {
-        foreach ($parts[0]['formContentData'] as $row) {
+    // Key => raw NF field lookup, so the layout walk below can pull full field
+    // definitions while following visual/part order rather than $data['fields'] order.
+    $field_by_key = [];
+    foreach ($data['fields'] as $nf_field) {
+        if (is_array($nf_field) && !empty($nf_field['key'])) {
+            $field_by_key[$nf_field['key']] = $nf_field;
+        }
+    }
+
+    // Walk parts -> rows -> cells -> field keys, recording each key's part index,
+    // cell width, and that part's title (for the page_break inserted at its start).
+    $ordered_keys = [];
+    foreach ($parts as $part_index => $part) {
+        if (empty($part['formContentData']) || !is_array($part['formContentData'])) continue;
+        foreach ($part['formContentData'] as $row) {
             if (empty($row['cells']) || !is_array($row['cells'])) continue;
             foreach ($row['cells'] as $cell) {
                 if (empty($cell['fields']) || !is_array($cell['fields'])) continue;
                 $w = isset($cell['width']) ? (string) $cell['width'] : '100';
                 foreach ($cell['fields'] as $fkey) {
-                    $field_widths[$fkey] = $w;
+                    $ordered_keys[] = [
+                        'key'        => $fkey,
+                        'part'       => $part_index,
+                        'width'      => $w,
+                        'part_title' => isset($part['title']) ? $part['title'] : '',
+                    ];
                 }
             }
+        }
+    }
+
+    // Defensive: any field present in the export but not placed in any part's
+    // layout (shouldn't normally happen) still gets imported, at the end, full width.
+    $seen_keys = wp_list_pluck($ordered_keys, 'key');
+    foreach ($field_by_key as $key => $nf_field) {
+        if (!in_array($key, $seen_keys, true)) {
+            $ordered_keys[] = ['key' => $key, 'part' => 0, 'width' => '100', 'part_title' => ''];
         }
     }
 
     $fields      = [];
     $key_to_uid  = [];
     $submit_text = '';
+    $current_part = null;
 
-    foreach ($data['fields'] as $nf_field) {
-        if (!is_array($nf_field) || empty($nf_field['type'])) continue;
+    foreach ($ordered_keys as $entry) {
+        $nf_key = $entry['key'];
+        if (!isset($field_by_key[$nf_key])) continue;
+        $nf_field = $field_by_key[$nf_key];
+        if (empty($nf_field['type'])) continue;
+
         $nf_type = $nf_field['type'];
-        $nf_key  = isset($nf_field['key']) ? $nf_field['key'] : '';
         $label   = isset($nf_field['label']) ? sanitize_text_field(wp_strip_all_tags($nf_field['label'])) : '';
 
         if ($nf_type === 'submit') {
@@ -223,10 +252,23 @@ function wa_forms_map_nf_import($data, $parts) {
             continue;
         }
 
+        // Crossing into a new part: insert the step break that starts it (but
+        // not before the very first part — that's just step 0, no marker needed).
+        if ($entry['part'] !== $current_part) {
+            if ($current_part !== null) {
+                $fields[] = [
+                    'label' => $entry['part_title'] !== '' ? sanitize_text_field($entry['part_title']) : '',
+                    'type'  => 'page_break',
+                    'uid'   => wp_generate_uuid4(),
+                ];
+            }
+            $current_part = $entry['part'];
+        }
+
         $type  = $type_map[$nf_type];
-        $width = (isset($field_widths[$nf_key]) && (int) $field_widths[$nf_key] < 100) ? 'half' : 'full';
+        $width = ((int) $entry['width'] < 100) ? 'half' : 'full';
         $uid   = wp_generate_uuid4();
-        if ($nf_key !== '') $key_to_uid[$nf_key] = $uid;
+        $key_to_uid[$nf_key] = $uid;
 
         $field = [
             'label'      => $label !== '' ? $label : ucfirst($type),
@@ -237,6 +279,10 @@ function wa_forms_map_nf_import($data, $parts) {
             'uid'        => $uid,
             '_nf_key'    => $nf_key, // temporary; used below, stripped before returning
         ];
+
+        if ($type === 'html') {
+            $field['content'] = ($nf_type === 'hr') ? '<hr>' : wp_kses_post(isset($nf_field['default']) ? $nf_field['default'] : '');
+        }
 
         if (in_array($type, $option_types, true)) {
             $options = [];
@@ -277,7 +323,7 @@ function wa_forms_map_nf_import($data, $parts) {
             }
 
             foreach ($fields as &$f) {
-                if ($f['_nf_key'] === $target_key) {
+                if (isset($f['_nf_key']) && $f['_nf_key'] === $target_key) {
                     $f['condition'] = [
                         'field'      => $key_to_uid[$trigger_key],
                         'comparator' => $comparator_map[$comparator],

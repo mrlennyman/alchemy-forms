@@ -27,21 +27,32 @@ function wa_forms_render_shortcode($atts) {
     $submit_text = !empty($settings['submit_text']) ? $settings['submit_text'] : __('Submit', 'wa-forms');
     $success_msg = !empty($settings['success_msg']) ? $settings['success_msg'] : __('Thanks — your submission has been received.', 'wa-forms');
 
-    // Give each field a stable input name derived from its position + label.
+    // Give each field a stable input name derived from its position + label,
+    // and stamp which step it belongs to (a form with no page_break fields is
+    // entirely step 0 — this is what keeps single-step forms unaffected below).
+    $step        = 0;
+    $step_titles = [0 => ''];
     foreach ($fields as $i => &$f) {
         $f['name'] = 'waf_' . $i . '_' . sanitize_title($f['label']);
+        if ($f['type'] === 'page_break') {
+            $step++;
+            $step_titles[$step] = $f['label'] !== '' ? $f['label'] : sprintf(__('Step %d', 'wa-forms'), $step + 1);
+        }
+        $f['_step'] = $step;
     }
     unset($f);
+    $step_count = $step + 1;
 
     $style_settings = (isset($settings['style']) && is_array($settings['style'])) ? $settings['style'] : [];
     $style          = wa_forms_resolve_style($style_settings);
 
     wa_forms_enqueue_frontend_css($style['font']);
 
-    $errors           = [];
-    $values           = [];
-    $success          = false;
-    $condition_lookup = []; // uid => submitted value, used to evaluate conditions; empty on a fresh (non-POST) load
+    $errors            = [];
+    $values            = [];
+    $success           = false;
+    $condition_lookup  = []; // uid => submitted value, used to evaluate conditions; empty on a fresh (non-POST) load
+    $first_error_step  = null; // which step to reopen the form on if validation fails
 
     $posted_this_form = isset($_POST['wa_form_id']) && (int) $_POST['wa_form_id'] === $form_id;
 
@@ -57,14 +68,17 @@ function wa_forms_render_shortcode($atts) {
             // First pass: raw values by uid, used only to evaluate each field's
             // conditional visibility before the real per-field handling below.
             $condition_lookup = [];
+            $skip_types       = array_merge(['file', 'checkbox'], wa_forms_noninput_field_types());
             foreach ($fields as $cf) {
-                if (empty($cf['uid']) || in_array($cf['type'], ['file', 'checkbox'], true)) continue;
+                if (empty($cf['uid']) || in_array($cf['type'], $skip_types, true)) continue;
                 $raw = isset($_POST[$cf['name']]) ? wp_unslash($_POST[$cf['name']]) : '';
                 if (is_array($raw)) $raw = '';
                 $condition_lookup[$cf['uid']] = sanitize_text_field($raw);
             }
 
             foreach ($fields as $field) {
+                if (in_array($field['type'], wa_forms_noninput_field_types(), true)) continue;
+
                 $name  = $field['name'];
                 $label = $field['label'];
 
@@ -72,6 +86,8 @@ function wa_forms_render_shortcode($atts) {
                 if (!wa_forms_evaluate_condition($condition, $condition_lookup)) {
                     continue; // hidden by its condition: not required, not stored
                 }
+
+                $errors_before = count($errors);
 
                 if ($field['type'] === 'file') {
                     $file_result = wa_forms_handle_upload($name, !empty($field['required']), $label, $errors);
@@ -81,10 +97,7 @@ function wa_forms_render_shortcode($atts) {
                     } else {
                         $entry_data[$label] = '';
                     }
-                    continue;
-                }
-
-                if ($field['type'] === 'checkbox') {
+                } elseif ($field['type'] === 'checkbox') {
                     $posted  = (isset($_POST[$name]) && is_array($_POST[$name])) ? wp_unslash($_POST[$name]) : [];
                     $allowed = (isset($field['options']) && is_array($field['options'])) ? $field['options'] : [];
                     $val     = array_values(array_intersect(array_map('sanitize_text_field', $posted), $allowed));
@@ -96,47 +109,50 @@ function wa_forms_render_shortcode($atts) {
                         /* translators: %s: field label */
                         $errors[] = sprintf(__('%s is required.', 'wa-forms'), $label);
                     }
-                    continue;
-                }
-
-                $raw = isset($_POST[$name]) ? wp_unslash($_POST[$name]) : '';
-                if (is_array($raw)) $raw = '';
-
-                if ($field['type'] === 'textarea') {
-                    $val = sanitize_textarea_field($raw);
-                } elseif ($field['type'] === 'email') {
-                    $val = sanitize_email($raw);
-                } elseif ($field['type'] === 'url') {
-                    $val = esc_url_raw(trim($raw));
-                } elseif ($field['type'] === 'select' || $field['type'] === 'radio') {
-                    $val     = sanitize_text_field($raw);
-                    $allowed = (isset($field['options']) && is_array($field['options'])) ? $field['options'] : [];
-                    if ($val !== '' && !in_array($val, $allowed, true)) $val = '';
                 } else {
-                    $val = sanitize_text_field($raw);
-                }
+                    $raw = isset($_POST[$name]) ? wp_unslash($_POST[$name]) : '';
+                    if (is_array($raw)) $raw = '';
 
-                $values[$name]      = $val;
-                $entry_data[$label] = $val;
-
-                if (!empty($field['required']) && $val === '') {
-                    /* translators: %s: field label */
-                    $errors[] = sprintf(__('%s is required.', 'wa-forms'), $label);
-                }
-                if ($field['type'] === 'email' && $val !== '' && !is_email($val)) {
-                    /* translators: %s: field label */
-                    $errors[] = sprintf(__('Please enter a valid email address for %s.', 'wa-forms'), $label);
-                }
-                if ($field['type'] === 'number' && $val !== '' && !is_numeric($val)) {
-                    /* translators: %s: field label */
-                    $errors[] = sprintf(__('Please enter a valid number for %s.', 'wa-forms'), $label);
-                }
-                if ($field['type'] === 'date' && $val !== '') {
-                    $date_check = DateTime::createFromFormat('Y-m-d', $val);
-                    if (!$date_check || $date_check->format('Y-m-d') !== $val) {
-                        /* translators: %s: field label */
-                        $errors[] = sprintf(__('Please enter a valid date for %s.', 'wa-forms'), $label);
+                    if ($field['type'] === 'textarea') {
+                        $val = sanitize_textarea_field($raw);
+                    } elseif ($field['type'] === 'email') {
+                        $val = sanitize_email($raw);
+                    } elseif ($field['type'] === 'url') {
+                        $val = esc_url_raw(trim($raw));
+                    } elseif ($field['type'] === 'select' || $field['type'] === 'radio') {
+                        $val     = sanitize_text_field($raw);
+                        $allowed = (isset($field['options']) && is_array($field['options'])) ? $field['options'] : [];
+                        if ($val !== '' && !in_array($val, $allowed, true)) $val = '';
+                    } else {
+                        $val = sanitize_text_field($raw);
                     }
+
+                    $values[$name]      = $val;
+                    $entry_data[$label] = $val;
+
+                    if (!empty($field['required']) && $val === '') {
+                        /* translators: %s: field label */
+                        $errors[] = sprintf(__('%s is required.', 'wa-forms'), $label);
+                    }
+                    if ($field['type'] === 'email' && $val !== '' && !is_email($val)) {
+                        /* translators: %s: field label */
+                        $errors[] = sprintf(__('Please enter a valid email address for %s.', 'wa-forms'), $label);
+                    }
+                    if ($field['type'] === 'number' && $val !== '' && !is_numeric($val)) {
+                        /* translators: %s: field label */
+                        $errors[] = sprintf(__('Please enter a valid number for %s.', 'wa-forms'), $label);
+                    }
+                    if ($field['type'] === 'date' && $val !== '') {
+                        $date_check = DateTime::createFromFormat('Y-m-d', $val);
+                        if (!$date_check || $date_check->format('Y-m-d') !== $val) {
+                            /* translators: %s: field label */
+                            $errors[] = sprintf(__('Please enter a valid date for %s.', 'wa-forms'), $label);
+                        }
+                    }
+                }
+
+                if (count($errors) > $errors_before && $first_error_step === null) {
+                    $first_error_step = isset($field['_step']) ? $field['_step'] : 0;
                 }
             }
 
@@ -176,7 +192,7 @@ function wa_forms_render_shortcode($atts) {
                 <p><?php echo esc_html($success_msg); ?></p>
             </div>
         <?php else : ?>
-            <form class="wa-form" method="post" enctype="multipart/form-data" novalidate>
+            <form class="wa-form" method="post" enctype="multipart/form-data" novalidate data-initial-step="<?php echo (int) ($first_error_step !== null ? $first_error_step : 0); ?>">
                 <input type="hidden" name="wa_form_id" value="<?php echo (int) $form_id; ?>">
                 <input type="hidden" name="wa_form_token" value="<?php echo esc_attr(wp_create_nonce('wa_form_submit_' . $form_id)); ?>">
                 <div class="wa-form-honeypot" aria-hidden="true">
@@ -195,85 +211,134 @@ function wa_forms_render_shortcode($atts) {
                     </div>
                 <?php endif; ?>
 
-                <div class="wa-form-grid">
-                    <?php foreach ($fields as $field) :
-                        $name     = $field['name'];
-                        $type     = $field['type'];
-                        $is_group = in_array($type, ['radio', 'checkbox'], true);
-                        $val      = isset($values[$name]) ? $values[$name] : ($type === 'checkbox' ? [] : '');
-                        $id       = 'wa-' . $form_id . '-' . $name;
-                        $req      = !empty($field['required']);
-                        $hidden_l = !empty($field['hide_label']);
-                        $wid      = ($field['width'] === 'half') ? 'half' : 'full';
-                        $options  = (isset($field['options']) && is_array($field['options'])) ? $field['options'] : [];
+                <?php if ($step_count <= 1) : ?>
+                    <div class="wa-form-grid">
+                        <?php foreach ($fields as $field) : wa_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
+                    </div>
 
-                        $condition      = isset($field['condition']) ? $field['condition'] : [];
-                        $has_condition  = !empty($condition['field']);
-                        $cond_visible   = wa_forms_evaluate_condition($condition, $condition_lookup);
-                        $field_classes  = 'wa-field wa-field--' . $wid . (!$cond_visible ? ' wa-field--hidden' : '');
+                    <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
+
+                <?php else :
+                    // Group fields by step (page_break markers themselves render nothing —
+                    // they only exist to mark where one step ends and the next begins).
+                    $steps = [];
+                    foreach ($fields as $field) {
+                        if ($field['type'] === 'page_break') continue;
+                        $steps[$field['_step']][] = $field;
+                    }
+                    ksort($steps);
                     ?>
-                        <div class="<?php echo esc_attr($field_classes); ?>"
-                            <?php if (!empty($field['uid'])) : ?>data-field-uid="<?php echo esc_attr($field['uid']); ?>"<?php endif; ?>
-                            <?php if ($has_condition) : ?>
-                                data-condition-field="<?php echo esc_attr($condition['field']); ?>"
-                                data-condition-comparator="<?php echo esc_attr(isset($condition['comparator']) ? $condition['comparator'] : 'equals'); ?>"
-                                data-condition-value="<?php echo esc_attr(isset($condition['value']) ? $condition['value'] : ''); ?>"
+                    <div class="wa-form-progress" data-label-template="<?php echo esc_attr(__('Step {n} of {total}', 'wa-forms')); ?>">
+                        <div class="wa-form-progress-label"></div>
+                        <div class="wa-form-progress-bar"><div class="wa-form-progress-fill"></div></div>
+                    </div>
+                    <?php foreach ($steps as $step_index => $step_fields) : ?>
+                        <div class="wa-form-step" data-step="<?php echo (int) $step_index; ?>">
+                            <?php if (!empty($step_titles[$step_index])) : ?>
+                                <h3 class="wa-form-step-title"><?php echo esc_html($step_titles[$step_index]); ?></h3>
                             <?php endif; ?>
-                        >
-                            <?php if ($is_group) : ?>
-                                <fieldset class="wa-field-group">
-                                    <legend<?php echo $hidden_l ? ' class="wa-visually-hidden"' : ''; ?>>
-                                        <?php echo esc_html($field['label']); ?>
-                                        <?php if ($req) : ?><span class="wa-req">*</span><?php endif; ?>
-                                    </legend>
-                                    <?php foreach ($options as $oi => $option) :
-                                        $opt_id  = $id . '-' . $oi;
-                                        $checked = ($type === 'checkbox') ? in_array($option, (array) $val, true) : ((string) $val === (string) $option);
-                                    ?>
-                                        <label class="wa-choice-option">
-                                            <input type="<?php echo esc_attr($type); ?>" id="<?php echo esc_attr($opt_id); ?>" name="<?php echo esc_attr($type === 'checkbox' ? $name . '[]' : $name); ?>" value="<?php echo esc_attr($option); ?>" <?php checked($checked); ?>>
-                                            <?php echo esc_html($option); ?>
-                                        </label>
-                                    <?php endforeach; ?>
-                                </fieldset>
-
-                            <?php else : ?>
-                                <label for="<?php echo esc_attr($id); ?>"<?php echo $hidden_l ? ' class="wa-visually-hidden"' : ''; ?>>
-                                    <?php echo esc_html($field['label']); ?>
-                                    <?php if ($req) : ?><span class="wa-req">*</span><?php endif; ?>
-                                </label>
-
-                                <?php if ($type === 'textarea') : ?>
-                                    <textarea id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" rows="4" <?php echo $req ? 'required aria-required="true"' : ''; ?>><?php echo esc_textarea($val); ?></textarea>
-
-                                <?php elseif ($type === 'file') : ?>
-                                    <div class="wa-file-input">
-                                        <input type="file" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" accept=".pdf,.jpg,.jpeg,.png" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
-                                        <span class="wa-file-hint"><?php esc_html_e('PDF, JPG or PNG, up to 5MB', 'wa-forms'); ?></span>
-                                    </div>
-
-                                <?php elseif ($type === 'select') : ?>
-                                    <select id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
-                                        <option value=""><?php esc_html_e('— Select —', 'wa-forms'); ?></option>
-                                        <?php foreach ($options as $option) : ?>
-                                            <option value="<?php echo esc_attr($option); ?>" <?php selected((string) $val, (string) $option); ?>><?php echo esc_html($option); ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-
-                                <?php else : ?>
-                                    <input type="<?php echo esc_attr($type); ?>" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($val); ?>" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
+                            <div class="wa-form-grid">
+                                <?php foreach ($step_fields as $field) : wa_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
+                            </div>
+                            <div class="wa-form-step-nav">
+                                <?php if ($step_index > 0) : ?>
+                                    <button type="button" class="wa-form-prev"><?php esc_html_e('Back', 'wa-forms'); ?></button>
                                 <?php endif; ?>
-                            <?php endif; ?>
+                                <?php if ($step_index < $step_count - 1) : ?>
+                                    <button type="button" class="wa-form-next"><?php esc_html_e('Next', 'wa-forms'); ?></button>
+                                <?php else : ?>
+                                    <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     <?php endforeach; ?>
-                </div>
-
-                <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
+                <?php endif; ?>
             </form>
         <?php endif; ?>
     </div>
     <?php
     return ob_get_clean();
+}
+
+/**
+ * Renders one field's markup within the form grid — label/legend + input,
+ * or sanitized content for an html block. Echoes directly (called inside an
+ * output buffer). page_break fields are never passed in here; the caller
+ * only uses them to decide where one step ends and the next begins.
+ */
+function wa_forms_render_field_markup($field, $form_id, $values, $condition_lookup) {
+    $name     = $field['name'];
+    $type     = $field['type'];
+    $is_group = in_array($type, ['radio', 'checkbox'], true);
+    $val      = isset($values[$name]) ? $values[$name] : ($type === 'checkbox' ? [] : '');
+    $id       = 'wa-' . $form_id . '-' . $name;
+    $req      = !empty($field['required']);
+    $hidden_l = !empty($field['hide_label']);
+    $wid      = ($field['width'] === 'half') ? 'half' : 'full';
+    $options  = (isset($field['options']) && is_array($field['options'])) ? $field['options'] : [];
+
+    $condition     = isset($field['condition']) ? $field['condition'] : [];
+    $has_condition = !empty($condition['field']);
+    $cond_visible  = wa_forms_evaluate_condition($condition, $condition_lookup);
+    $field_classes = 'wa-field wa-field--' . $wid . (!$cond_visible ? ' wa-field--hidden' : '');
+    ?>
+    <div class="<?php echo esc_attr($field_classes); ?>"
+        <?php if (!empty($field['uid'])) : ?>data-field-uid="<?php echo esc_attr($field['uid']); ?>"<?php endif; ?>
+        <?php if ($has_condition) : ?>
+            data-condition-field="<?php echo esc_attr($condition['field']); ?>"
+            data-condition-comparator="<?php echo esc_attr(isset($condition['comparator']) ? $condition['comparator'] : 'equals'); ?>"
+            data-condition-value="<?php echo esc_attr(isset($condition['value']) ? $condition['value'] : ''); ?>"
+        <?php endif; ?>
+    >
+        <?php if ($type === 'html') : ?>
+            <div class="wa-field-html"><?php echo wp_kses_post(isset($field['content']) ? $field['content'] : ''); ?></div>
+
+        <?php elseif ($is_group) : ?>
+            <fieldset class="wa-field-group">
+                <legend<?php echo $hidden_l ? ' class="wa-visually-hidden"' : ''; ?>>
+                    <?php echo esc_html($field['label']); ?>
+                    <?php if ($req) : ?><span class="wa-req">*</span><?php endif; ?>
+                </legend>
+                <?php foreach ($options as $oi => $option) :
+                    $opt_id  = $id . '-' . $oi;
+                    $checked = ($type === 'checkbox') ? in_array($option, (array) $val, true) : ((string) $val === (string) $option);
+                ?>
+                    <label class="wa-choice-option">
+                        <input type="<?php echo esc_attr($type); ?>" id="<?php echo esc_attr($opt_id); ?>" name="<?php echo esc_attr($type === 'checkbox' ? $name . '[]' : $name); ?>" value="<?php echo esc_attr($option); ?>" <?php checked($checked); ?>>
+                        <?php echo esc_html($option); ?>
+                    </label>
+                <?php endforeach; ?>
+            </fieldset>
+
+        <?php else : ?>
+            <label for="<?php echo esc_attr($id); ?>"<?php echo $hidden_l ? ' class="wa-visually-hidden"' : ''; ?>>
+                <?php echo esc_html($field['label']); ?>
+                <?php if ($req) : ?><span class="wa-req">*</span><?php endif; ?>
+            </label>
+
+            <?php if ($type === 'textarea') : ?>
+                <textarea id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" rows="4" <?php echo $req ? 'required aria-required="true"' : ''; ?>><?php echo esc_textarea($val); ?></textarea>
+
+            <?php elseif ($type === 'file') : ?>
+                <div class="wa-file-input">
+                    <input type="file" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" accept=".pdf,.jpg,.jpeg,.png" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
+                    <span class="wa-file-hint"><?php esc_html_e('PDF, JPG or PNG, up to 5MB', 'wa-forms'); ?></span>
+                </div>
+
+            <?php elseif ($type === 'select') : ?>
+                <select id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
+                    <option value=""><?php esc_html_e('— Select —', 'wa-forms'); ?></option>
+                    <?php foreach ($options as $option) : ?>
+                        <option value="<?php echo esc_attr($option); ?>" <?php selected((string) $val, (string) $option); ?>><?php echo esc_html($option); ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+            <?php else : ?>
+                <input type="<?php echo esc_attr($type); ?>" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($val); ?>" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+    <?php
 }
 
 /**
@@ -498,8 +563,33 @@ function wa_forms_frontend_css() {
 .wa-form-success { background: var(--wa-surface); border: 1px solid var(--wa-border); border-left: 4px solid var(--wa-primary); border-radius: var(--wa-radius); padding: 2rem; }
 .wa-form-success h3 { font-family: var(--wa-font-display); font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem; color: var(--wa-primary-dark); }
 .wa-form-success p { margin: 0; color: var(--wa-muted); }
+.wa-field-html { font-size: 0.95rem; line-height: 1.6; }
+.wa-field-html img, .wa-field-html video { max-width: 100%; height: auto; }
+.wa-field-html p:first-child { margin-top: 0; }
+.wa-field-html p:last-child { margin-bottom: 0; }
+.wa-form-progress { margin-bottom: 1.5rem; }
+.wa-form-progress-label { font-size: 0.82rem; color: var(--wa-muted); margin-bottom: 0.4rem; }
+.wa-form-progress-bar { background: var(--wa-border); border-radius: 999px; height: 6px; overflow: hidden; }
+.wa-form-progress-fill { background: var(--wa-primary); height: 100%; width: 0; transition: width 0.25s ease; }
+.wa-form-step { display: none; }
+.wa-form-step.wa-form-step--active { display: block; }
+.wa-form-step-title { font-family: var(--wa-font-display); font-weight: 600; font-size: 1.25rem; color: var(--wa-primary-dark); margin: 0 0 1.25rem; }
+.wa-form-step-nav { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-top: 1.75rem; }
+.wa-form-step-nav .wa-form-prev {
+  margin-right: auto; font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-text);
+  background: transparent; border: 1px solid var(--wa-border); border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.wa-form-step-nav .wa-form-prev:hover { background: var(--wa-bg); border-color: var(--wa-muted); }
+.wa-form-step-nav .wa-form-next {
+  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: #fff;
+  background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.wa-form-step-nav .wa-form-next:hover { background: var(--wa-button-bg-hover); }
+.wa-form-step-nav .wa-form-submit { margin-top: 0; }
 @media (prefers-reduced-motion: reduce) {
-  .wa-form-submit, .wa-field input, .wa-field select, .wa-field textarea { transition: none; }
+  .wa-form-submit, .wa-form-next, .wa-form-prev, .wa-field input, .wa-field select, .wa-field textarea, .wa-form-progress-fill { transition: none; }
 }
 CSS;
 }
