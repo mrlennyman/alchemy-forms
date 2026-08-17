@@ -53,7 +53,9 @@ function alchemy_forms_render_shortcode($atts) {
     // or reopening the form on the wrong step after a validation error.
     $raw_steps = [];
     foreach ($fields as $field) {
-        if ($field['type'] === 'page_break') continue;
+        // Neither is a visual grid field: page_break only marks a step boundary,
+        // and hidden fields render separately (see $hidden_fields below).
+        if (in_array($field['type'], ['page_break', 'hidden'], true)) continue;
         $raw_steps[$field['_step']][] = $field;
     }
     ksort($raw_steps);
@@ -238,6 +240,12 @@ function alchemy_forms_render_shortcode($atts) {
                     </label>
                 </div>
 
+                <?php foreach ($fields as $field) :
+                    if ($field['type'] !== 'hidden') continue;
+                ?>
+                    <input type="hidden" name="<?php echo esc_attr($field['name']); ?>" value="<?php echo esc_attr(alchemy_forms_resolve_hidden_value($field)); ?>">
+                <?php endforeach; ?>
+
                 <?php if (!empty($errors)) : ?>
                     <div class="wa-form-errors" role="alert">
                         <ul>
@@ -250,7 +258,7 @@ function alchemy_forms_render_shortcode($atts) {
 
                 <?php if ($step_count <= 1) : ?>
                     <div class="wa-form-grid">
-                        <?php foreach ($fields as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
+                        <?php foreach ((isset($steps[0]) ? $steps[0] : []) as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
                     </div>
 
                     <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
@@ -321,6 +329,13 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
         <?php if ($type === 'html') : ?>
             <div class="wa-field-html"><?php echo wp_kses_post(isset($field['content']) ? $field['content'] : ''); ?></div>
 
+        <?php elseif ($type === 'checkbox_single') : ?>
+            <label class="wa-choice-option">
+                <input type="checkbox" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="1" <?php checked($val === '1'); ?> <?php echo $req ? 'required aria-required="true"' : ''; ?>>
+                <?php echo esc_html($field['label']); ?>
+                <?php if ($req) : ?><span class="wa-req">*</span><?php endif; ?>
+            </label>
+
         <?php elseif ($is_group) : ?>
             <fieldset class="wa-field-group">
                 <legend<?php echo $hidden_l ? ' class="wa-visually-hidden"' : ''; ?>>
@@ -367,6 +382,23 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
         <?php endif; ?>
     </div>
     <?php
+}
+
+/**
+ * Resolves a Hidden field's value at render time — never shown to or editable
+ * by the visitor. get_the_title()/get_the_ID()/get_permalink() are called with
+ * no arguments, so they resolve against the current front-end page/post the
+ * shortcode is embedded on (the same WordPress global-context dependency
+ * Ninja Forms' own {wp:post_title} merge tag relies on).
+ */
+function alchemy_forms_resolve_hidden_value($field) {
+    $source = isset($field['source']) ? $field['source'] : 'static';
+    switch ($source) {
+        case 'post_title': return get_the_title();
+        case 'post_id':    return (string) get_the_ID();
+        case 'post_url':   return (string) get_permalink();
+        default:           return isset($field['static_value']) ? $field['static_value'] : '';
+    }
 }
 
 /**

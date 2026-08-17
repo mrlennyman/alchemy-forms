@@ -145,6 +145,10 @@ jQuery(function ($) {
         updateConditionValueInput($(this).closest('.wa-field-item'));
     });
 
+    $list.on('change', '.wa-hidden-source', function () {
+        $(this).closest('.wa-field-item').find('.wa-hidden-static-value').toggle(this.value === 'static');
+    });
+
     $list.on('blur', '.wa-field-label', refreshConditionDropdowns);
 
     // Palette: click a field type to append it to the end of the canvas.

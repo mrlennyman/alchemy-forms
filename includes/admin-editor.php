@@ -161,13 +161,19 @@ function alchemy_forms_field_row($i, $f, $types, $icons = null, $all_fields = []
 
     $is_page_break = ($type === 'page_break');
     $is_html       = ($type === 'html');
-    $show_width    = !$is_page_break;
-    $show_meta     = !$is_page_break && !$is_html;
+    $is_hidden     = ($type === 'hidden');
+    $show_width    = !$is_page_break && !$is_hidden;
+    $show_meta     = !$is_page_break && !$is_html && !$is_hidden;
+
+    $source = isset($f['source']) ? $f['source'] : 'post_title';
+    $static_value = isset($f['static_value']) ? $f['static_value'] : '';
+    $hidden_sources = alchemy_forms_hidden_sources();
 
     $summary = trim($type_label
         . ($show_width && $width === 'half' ? ' · ' . __('Half width', 'alchemy-forms') : '')
         . ($show_meta && $required ? ' · ' . __('Required', 'alchemy-forms') : '')
-        . ($show_meta && $hide_label ? ' · ' . __('Label hidden', 'alchemy-forms') : ''));
+        . ($show_meta && $hide_label ? ' · ' . __('Label hidden', 'alchemy-forms') : '')
+        . ($is_hidden && isset($hidden_sources[$source]) ? ' · ' . $hidden_sources[$source] : ''));
 
     $condition            = (isset($f['condition']) && is_array($f['condition'])) ? $f['condition'] : [];
     $condition_enabled    = !empty($condition['field']);
@@ -199,6 +205,24 @@ function alchemy_forms_field_row($i, $f, $types, $icons = null, $all_fields = []
                     <p>
                         <label><?php esc_html_e('Step title', 'alchemy-forms'); ?></label>
                         <input type="text" class="wa-field-label widefat" name="wa_fields[<?php echo esc_attr($i); ?>][label]" value="<?php echo esc_attr($label); ?>" placeholder="<?php esc_attr_e('e.g. Contact Details', 'alchemy-forms'); ?>">
+                    </p>
+
+                <?php elseif ($is_hidden) : ?>
+                    <p>
+                        <label><?php esc_html_e('Label (used in entries/emails)', 'alchemy-forms'); ?></label>
+                        <input type="text" class="wa-field-label widefat" name="wa_fields[<?php echo esc_attr($i); ?>][label]" value="<?php echo esc_attr($label); ?>" placeholder="<?php esc_attr_e('e.g. Event Page', 'alchemy-forms'); ?>">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e('Value', 'alchemy-forms'); ?></label>
+                        <select class="wa-hidden-source" name="wa_fields[<?php echo esc_attr($i); ?>][source]">
+                            <?php foreach ($hidden_sources as $key => $src_label) : ?>
+                                <option value="<?php echo esc_attr($key); ?>" <?php selected($source, $key); ?>><?php echo esc_html($src_label); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </p>
+                    <p class="wa-hidden-static-value" <?php echo $source === 'static' ? '' : 'style="display:none"'; ?>>
+                        <label><?php esc_html_e('Fixed value', 'alchemy-forms'); ?></label>
+                        <input type="text" class="widefat" name="wa_fields[<?php echo esc_attr($i); ?>][static_value]" value="<?php echo esc_attr($static_value); ?>">
                     </p>
 
                 <?php else : ?>
@@ -458,6 +482,10 @@ add_action('save_post_wa_form', function ($post_id) {
 
             if ($type === 'html') {
                 $field['content'] = $content;
+            } elseif ($type === 'hidden') {
+                $source_keys = array_keys(alchemy_forms_hidden_sources());
+                $field['source'] = (isset($f['source']) && in_array($f['source'], $source_keys, true)) ? $f['source'] : 'post_title';
+                $field['static_value'] = isset($f['static_value']) ? sanitize_text_field($f['static_value']) : '';
             }
 
             if (in_array($type, $option_types, true)) {

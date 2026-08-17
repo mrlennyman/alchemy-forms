@@ -3,7 +3,7 @@
  * Plugin Name: Alchemy Forms
  * Plugin URI:  https://websitealchemy.co.nz
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Website Alchemy
  * Author URI:  https://websitealchemy.co.nz
  * License:     GPL-2.0-or-later
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('ALCHEMY_FORMS_VERSION', '1.2.0');
+define('ALCHEMY_FORMS_VERSION', '1.3.0');
 define('ALCHEMY_FORMS_DIR', plugin_dir_path(__FILE__));
 define('ALCHEMY_FORMS_URL', plugin_dir_url(__FILE__));
 
@@ -54,9 +54,11 @@ function alchemy_forms_field_types() {
         'select'   => __('Dropdown', 'alchemy-forms'),
         'radio'    => __('Radio buttons', 'alchemy-forms'),
         'checkbox' => __('Checkboxes', 'alchemy-forms'),
+        'checkbox_single' => __('Single Checkbox', 'alchemy-forms'),
         'file'     => __('File upload', 'alchemy-forms'),
         'html'     => __('HTML / Text Block', 'alchemy-forms'),
         'page_break' => __('Step Break', 'alchemy-forms'),
+        'hidden'   => __('Hidden Field', 'alchemy-forms'),
     ];
 }
 
@@ -103,9 +105,25 @@ function alchemy_forms_field_type_icons() {
         'select'   => 'dashicons-menu-alt',
         'radio'    => 'dashicons-marker',
         'checkbox' => 'dashicons-forms',
+        'checkbox_single' => 'dashicons-yes-alt',
         'file'     => 'dashicons-upload',
         'html'     => 'dashicons-editor-code',
         'page_break' => 'dashicons-editor-break',
+        'hidden'   => 'dashicons-hidden',
+    ];
+}
+
+/**
+ * Where a Hidden field's value comes from — resolved server-side at render
+ * time (see alchemy_forms_resolve_hidden_value() in render.php), never shown
+ * to or editable by the visitor.
+ */
+function alchemy_forms_hidden_sources() {
+    return [
+        'post_title' => __('Page/Post Title', 'alchemy-forms'),
+        'post_id'    => __('Page/Post ID', 'alchemy-forms'),
+        'post_url'   => __('Page/Post URL', 'alchemy-forms'),
+        'static'     => __('Fixed value', 'alchemy-forms'),
     ];
 }
 

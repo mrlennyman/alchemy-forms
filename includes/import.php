@@ -173,8 +173,10 @@ function alchemy_forms_nf_type_map() {
         'number'       => 'number',
         'listradio'    => 'radio',
         'listcheckbox' => 'checkbox',
+        'checkbox'     => 'checkbox_single',
         'html'         => 'html',
         'hr'           => 'html',
+        'hidden'       => 'hidden',
     ];
 }
 
@@ -286,6 +288,25 @@ function alchemy_forms_map_nf_import($data, $parts) {
 
         if ($type === 'html') {
             $field['content'] = ($nf_type === 'hr') ? '<hr>' : wp_kses_post(isset($nf_field['default']) ? $nf_field['default'] : '');
+        } elseif ($type === 'hidden') {
+            $raw_default = isset($nf_field['default']) ? (string) $nf_field['default'] : '';
+            $merge_tag_sources = [
+                '{wp:post_title}' => 'post_title',
+                '{wp:post_id}'    => 'post_id',
+                '{wp:post_url}'   => 'post_url',
+                '{wp:permalink}'  => 'post_url',
+            ];
+            if (isset($merge_tag_sources[$raw_default])) {
+                $field['source']       = $merge_tag_sources[$raw_default];
+                $field['static_value'] = '';
+            } else {
+                $field['source']       = 'static';
+                $field['static_value'] = sanitize_text_field($raw_default);
+                if (strpos($raw_default, '{') !== false && strpos($raw_default, '}') !== false) {
+                    /* translators: %s: field label */
+                    $summary[] = sprintf(__('The hidden field "%s" used a merge tag that isn\'t recognized, and was imported with that raw text as a fixed value — double check it.', 'alchemy-forms'), $label !== '' ? $label : __('Hidden', 'alchemy-forms'));
+                }
+            }
         }
 
         if (in_array($type, $option_types, true)) {
