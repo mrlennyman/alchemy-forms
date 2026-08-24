@@ -59,6 +59,7 @@ add_action('add_meta_boxes', function () {
     add_meta_box('wa_form_fields', __('Form Fields', 'alchemy-forms'), 'alchemy_forms_fields_metabox', 'wa_form', 'normal', 'high');
     add_meta_box('wa_form_settings', __('Form Settings', 'alchemy-forms'), 'alchemy_forms_settings_metabox', 'wa_form', 'side', 'default');
     add_meta_box('wa_form_style', __('Style', 'alchemy-forms'), 'alchemy_forms_style_metabox', 'wa_form', 'side', 'default');
+    add_meta_box('wa_form_integrations', __('Email Marketing', 'alchemy-forms'), 'alchemy_forms_integrations_metabox', 'wa_form', 'side', 'low');
     add_meta_box('wa_form_usage', __('Usage', 'alchemy-forms'), 'alchemy_forms_usage_metabox', 'wa_form', 'side', 'low');
 });
 
@@ -437,6 +438,74 @@ function alchemy_forms_style_metabox($post) {
     <?php
 }
 
+function alchemy_forms_integrations_metabox($post) {
+    $settings = get_post_meta($post->ID, '_wa_form_settings', true);
+    $flodesk  = (is_array($settings) && isset($settings['integrations']['flodesk']) && is_array($settings['integrations']['flodesk'])) ? $settings['integrations']['flodesk'] : [];
+
+    $enabled     = !empty($flodesk['enabled']);
+    $api_key     = isset($flodesk['api_key']) ? $flodesk['api_key'] : '';
+    $segment_ids = (isset($flodesk['segment_ids']) && is_array($flodesk['segment_ids'])) ? implode(', ', $flodesk['segment_ids']) : '';
+    $email_field = isset($flodesk['email_field']) ? $flodesk['email_field'] : '';
+    $first_field = isset($flodesk['first_name_field']) ? $flodesk['first_name_field'] : '';
+    $last_field  = isset($flodesk['last_name_field']) ? $flodesk['last_name_field'] : '';
+
+    // Fields the visitor can actually fill in — same exclusion as everywhere else
+    // that offers a "pick one of this form's fields" dropdown.
+    $form_fields = get_post_meta($post->ID, '_wa_form_fields', true);
+    if (!is_array($form_fields)) $form_fields = [];
+    $noninput_types = alchemy_forms_noninput_field_types();
+    $picker = [];
+    foreach ($form_fields as $f) {
+        if (empty($f['uid']) || empty($f['label'])) continue;
+        if (isset($f['type']) && in_array($f['type'], $noninput_types, true)) continue;
+        $picker[] = ['uid' => $f['uid'], 'label' => $f['label']];
+    }
+    ?>
+    <p>
+        <label>
+            <input type="checkbox" name="wa_settings[integrations][flodesk][enabled]" value="1" <?php checked($enabled); ?>>
+            <?php esc_html_e('Add subscribers to Flodesk on submission', 'alchemy-forms'); ?>
+        </label>
+    </p>
+    <p>
+        <label for="wa_flodesk_api_key"><?php esc_html_e('API key', 'alchemy-forms'); ?></label>
+        <input type="text" id="wa_flodesk_api_key" name="wa_settings[integrations][flodesk][api_key]" value="<?php echo esc_attr($api_key); ?>" class="widefat" autocomplete="off">
+    </p>
+    <p>
+        <label for="wa_flodesk_email_field"><?php esc_html_e('Email field', 'alchemy-forms'); ?></label>
+        <select id="wa_flodesk_email_field" name="wa_settings[integrations][flodesk][email_field]" class="widefat">
+            <option value=""><?php esc_html_e('— Select a field —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($email_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label for="wa_flodesk_first_name_field"><?php esc_html_e('First name field (optional)', 'alchemy-forms'); ?></label>
+        <select id="wa_flodesk_first_name_field" name="wa_settings[integrations][flodesk][first_name_field]" class="widefat">
+            <option value=""><?php esc_html_e('— None —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($first_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label for="wa_flodesk_last_name_field"><?php esc_html_e('Last name field (optional)', 'alchemy-forms'); ?></label>
+        <select id="wa_flodesk_last_name_field" name="wa_settings[integrations][flodesk][last_name_field]" class="widefat">
+            <option value=""><?php esc_html_e('— None —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($last_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label for="wa_flodesk_segments"><?php esc_html_e('Segment ID(s)', 'alchemy-forms'); ?></label>
+        <input type="text" id="wa_flodesk_segments" name="wa_settings[integrations][flodesk][segment_ids]" value="<?php echo esc_attr($segment_ids); ?>" class="widefat" placeholder="<?php esc_attr_e('comma-separated segment IDs', 'alchemy-forms'); ?>">
+        <span class="description"><?php esc_html_e('Copy segment IDs from your Flodesk account (under Audience → Segments).', 'alchemy-forms'); ?></span>
+    </p>
+    <?php
+}
+
 function alchemy_forms_usage_metabox($post) {
     ?>
     <p><?php esc_html_e('Add this form to any page or Beaver Builder text module:', 'alchemy-forms'); ?></p>
@@ -557,6 +626,30 @@ add_action('save_post_wa_form', function ($post_id) {
             'button_font_size'     => alchemy_forms_sanitize_px($style_in['button_font_size'] ?? null, $d['button_font_size']),
             'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', $d['container_bg_color']),
             'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100),
+        ];
+
+        $flodesk_in = (isset($s['integrations']['flodesk']) && is_array($s['integrations']['flodesk'])) ? $s['integrations']['flodesk'] : [];
+
+        $flodesk_segment_ids = [];
+        if (!empty($flodesk_in['segment_ids'])) {
+            foreach (preg_split('/[,\s]+/', (string) $flodesk_in['segment_ids']) as $segment_id) {
+                $segment_id = sanitize_text_field($segment_id);
+                if ($segment_id !== '') $flodesk_segment_ids[] = $segment_id;
+            }
+        }
+
+        // Field pickers store a uid, not validated against known fields here (same
+        // as elsewhere) — a stale uid just means the integration finds no value to
+        // send at submission time, so there's nothing unsafe about leaving it as-is.
+        $settings['integrations'] = [
+            'flodesk' => [
+                'enabled'          => !empty($flodesk_in['enabled']) ? 1 : 0,
+                'api_key'          => isset($flodesk_in['api_key']) ? sanitize_text_field($flodesk_in['api_key']) : '',
+                'segment_ids'      => $flodesk_segment_ids,
+                'email_field'      => isset($flodesk_in['email_field']) ? sanitize_text_field($flodesk_in['email_field']) : '',
+                'first_name_field' => isset($flodesk_in['first_name_field']) ? sanitize_text_field($flodesk_in['first_name_field']) : '',
+                'last_name_field'  => isset($flodesk_in['last_name_field']) ? sanitize_text_field($flodesk_in['last_name_field']) : '',
+            ],
         ];
     }
     update_post_meta($post_id, '_wa_form_settings', $settings);

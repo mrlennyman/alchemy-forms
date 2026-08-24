@@ -3,7 +3,7 @@
  * Plugin Name: Alchemy Forms
  * Plugin URI:  https://websitealchemy.co.nz
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     1.3.0
+ * Version:     1.4.0
  * Author:      Website Alchemy
  * Author URI:  https://websitealchemy.co.nz
  * License:     GPL-2.0-or-later
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('ALCHEMY_FORMS_VERSION', '1.3.0');
+define('ALCHEMY_FORMS_VERSION', '1.4.0');
 define('ALCHEMY_FORMS_DIR', plugin_dir_path(__FILE__));
 define('ALCHEMY_FORMS_URL', plugin_dir_url(__FILE__));
 
@@ -20,6 +20,7 @@ require_once ALCHEMY_FORMS_DIR . 'includes/admin-editor.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/entries.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/render.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/import.php';
+require_once ALCHEMY_FORMS_DIR . 'includes/integrations.php';
 
 // Not on WordPress.org, so this is what gives client sites a real
 // "Update available" notice + one-click Update Now instead of needing a

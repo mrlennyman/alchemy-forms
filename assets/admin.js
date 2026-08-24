@@ -223,7 +223,7 @@ jQuery(function ($) {
     var $drawer = $('<div id="wa-settings-drawer"><div class="wa-drawer-panel"></div></div>').appendTo('#post');
     var $panel = $drawer.find('.wa-drawer-panel');
 
-    ['#submitdiv', '#wa_form_settings', '#wa_form_usage'].forEach(function (selector) {
+    ['#submitdiv', '#wa_form_settings', '#wa_form_integrations', '#wa_form_usage'].forEach(function (selector) {
         var $box = $(selector);
         if ($box.length) $panel.append($box);
     });

@@ -94,6 +94,7 @@ function alchemy_forms_render_shortcode($atts) {
             $success = true; // Honeypot: pretend it worked, save/send nothing.
         } else {
             $entry_data       = [];
+            $values_by_uid    = []; // submitted values keyed by field uid, for the Flodesk integration below
             $attachment_paths = []; // every file uploaded this submission, not just the last field's
             $attachment_ids   = [];
 
@@ -130,6 +131,7 @@ function alchemy_forms_render_shortcode($atts) {
                     } else {
                         $entry_data[$label] = '';
                     }
+                    if (!empty($field['uid'])) $values_by_uid[$field['uid']] = $entry_data[$label];
                 } elseif ($field['type'] === 'checkbox') {
                     $posted  = (isset($_POST[$name]) && is_array($_POST[$name])) ? wp_unslash($_POST[$name]) : [];
                     $allowed = (isset($field['options']) && is_array($field['options'])) ? $field['options'] : [];
@@ -137,6 +139,7 @@ function alchemy_forms_render_shortcode($atts) {
 
                     $values[$name]      = $val;
                     $entry_data[$label] = implode(', ', $val);
+                    if (!empty($field['uid'])) $values_by_uid[$field['uid']] = $entry_data[$label];
 
                     if (!empty($field['required']) && empty($val)) {
                         /* translators: %s: field label */
@@ -162,6 +165,7 @@ function alchemy_forms_render_shortcode($atts) {
 
                     $values[$name]      = $val;
                     $entry_data[$label] = $val;
+                    if (!empty($field['uid'])) $values_by_uid[$field['uid']] = $val;
 
                     if (!empty($field['required']) && $val === '') {
                         /* translators: %s: field label */
@@ -208,6 +212,10 @@ function alchemy_forms_render_shortcode($atts) {
                 );
                 // Entry is stored either way — email failure shouldn't lose the submission.
                 $success = true;
+
+                if (!empty($settings['integrations']['flodesk']['enabled'])) {
+                    alchemy_forms_send_to_flodesk($settings['integrations']['flodesk'], $values_by_uid);
+                }
             } elseif ($attachment_ids) {
                 // Files were uploaded and attached before a later field failed
                 // validation — don't leave any of them orphaned in the Media Library.
