@@ -151,6 +151,8 @@ function alchemy_forms_field_row($i, $f, $types, $icons = null, $all_fields = []
     $width        = (isset($f['width']) && $f['width'] === 'half') ? 'half' : 'full';
     $uid          = isset($f['uid']) ? $f['uid'] : '';
     $content      = isset($f['content']) ? $f['content'] : '';
+    $placeholder  = isset($f['placeholder']) ? $f['placeholder'] : '';
+    $show_placeholder = in_array($type, alchemy_forms_placeholder_eligible_types(), true);
     $option_types = alchemy_forms_option_field_types();
     $options      = (isset($f['options']) && is_array($f['options'])) ? implode("\n", $f['options']) : '';
     $show_options = in_array($type, $option_types, true);
@@ -235,6 +237,13 @@ function alchemy_forms_field_row($i, $f, $types, $icons = null, $all_fields = []
                             <label><?php esc_html_e('Label', 'alchemy-forms'); ?></label>
                             <input type="text" class="wa-field-label widefat" name="wa_fields[<?php echo esc_attr($i); ?>][label]" value="<?php echo esc_attr($label); ?>" placeholder="<?php esc_attr_e('Field label', 'alchemy-forms'); ?>">
                         </p>
+                        <?php if ($show_placeholder) : ?>
+                            <p>
+                                <label><?php esc_html_e('Placeholder text (optional)', 'alchemy-forms'); ?></label>
+                                <input type="text" class="widefat" name="wa_fields[<?php echo esc_attr($i); ?>][placeholder]" value="<?php echo esc_attr($placeholder); ?>" placeholder="<?php esc_attr_e('e.g. Jane Smith', 'alchemy-forms'); ?>">
+                                <span class="description"><?php esc_html_e('A hint shown inside the empty field. This is not a replacement for the label above — screen readers and browser autofill rely on the label, not the placeholder.', 'alchemy-forms'); ?></span>
+                            </p>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <p class="wa-field-row-inline">
@@ -583,6 +592,8 @@ add_action('save_post_wa_form', function ($post_id) {
                 $source_keys = array_keys(alchemy_forms_hidden_sources());
                 $field['source'] = (isset($f['source']) && in_array($f['source'], $source_keys, true)) ? $f['source'] : 'post_title';
                 $field['static_value'] = isset($f['static_value']) ? sanitize_text_field($f['static_value']) : '';
+            } elseif (in_array($type, alchemy_forms_placeholder_eligible_types(), true)) {
+                $field['placeholder'] = isset($f['placeholder']) ? sanitize_text_field($f['placeholder']) : '';
             }
 
             if (in_array($type, $option_types, true)) {

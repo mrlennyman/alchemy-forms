@@ -71,6 +71,15 @@ function alchemy_forms_option_field_types() {
 }
 
 /**
+ * Field types that render as a native text-like input, where a placeholder
+ * attribute is meaningful. Excludes select/radio/checkbox (no placeholder
+ * support), file (uses its own hint text), and the non-input types.
+ */
+function alchemy_forms_placeholder_eligible_types() {
+    return ['text', 'email', 'tel', 'url', 'number', 'textarea'];
+}
+
+/**
  * Field types that collect no submitted value (nothing to validate/store),
  * used for the front-end submission loop and the condition-lookup pass.
  */

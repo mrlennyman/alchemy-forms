@@ -322,6 +322,9 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
     $hidden_l = !empty($field['hide_label']);
     $wid      = ($field['width'] === 'half') ? 'half' : 'full';
     $options  = (isset($field['options']) && is_array($field['options'])) ? $field['options'] : [];
+    // A hint shown only inside the empty field — never a substitute for the
+    // <label> above, which is what screen readers and browser autofill use.
+    $placeholder_attr = (!empty($field['placeholder'])) ? ' placeholder="' . esc_attr($field['placeholder']) . '"' : '';
 
     $condition     = isset($field['condition']) ? $field['condition'] : [];
     $has_condition = !empty($condition['field']);
@@ -370,7 +373,7 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
             </label>
 
             <?php if ($type === 'textarea') : ?>
-                <textarea id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" rows="4" <?php echo $req ? 'required aria-required="true"' : ''; ?>><?php echo esc_textarea($val); ?></textarea>
+                <textarea id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" rows="4"<?php echo $placeholder_attr; ?> <?php echo $req ? 'required aria-required="true"' : ''; ?>><?php echo esc_textarea($val); ?></textarea>
 
             <?php elseif ($type === 'file') : ?>
                 <div class="wa-file-input">
@@ -387,7 +390,7 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
                 </select>
 
             <?php else : ?>
-                <input type="<?php echo esc_attr($type); ?>" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($val); ?>" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
+                <input type="<?php echo esc_attr($type); ?>" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($val); ?>"<?php echo $placeholder_attr; ?> <?php echo $req ? 'required aria-required="true"' : ''; ?>>
             <?php endif; ?>
         <?php endif; ?>
     </div>
