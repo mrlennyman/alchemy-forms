@@ -92,9 +92,6 @@ function alchemy_forms_fields_metabox($post) {
     <div class="wa-builder">
         <div class="wa-builder-toolbar">
             <p class="description"><?php esc_html_e('Click or drag a field type onto the canvas to add it. Drag cards to reorder.', 'alchemy-forms'); ?></p>
-            <button type="button" class="button button-secondary" id="wa-open-settings">
-                <span class="dashicons dashicons-admin-generic"></span> <?php esc_html_e('Settings', 'alchemy-forms'); ?>
-            </button>
         </div>
         <div class="wa-builder-body">
             <div class="wa-palette">

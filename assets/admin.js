@@ -205,8 +205,7 @@ jQuery(function ($) {
     updateEmptyState();
     refreshConditionDropdowns();
 
-    // Style box relocates into its own persistent sidebar slot next to the
-    // canvas, so it's visible without opening the Settings drawer.
+    // Style box relocates into its own persistent sidebar slot next to the canvas.
     $('#wa-style-panel-slot').append($('#wa_form_style'));
 
     $('#wa_style_container_opacity').on('input', function () {
@@ -214,29 +213,16 @@ jQuery(function ($) {
     });
 
     /* -------------------------------------------------------------------
-     * Settings drawer — relocates the Publish/Settings/Usage boxes
-     * (rendered normally by WordPress) into a slide-out panel so the
-     * canvas can use the full width of the screen.
+     * Sidebar — relocates the Publish/Settings/Usage boxes (rendered
+     * normally by WordPress) into a second persistent column next to the
+     * Style panel, so they're always visible without hiding the canvas.
      * ---------------------------------------------------------------- */
     // Appended inside the post form (not body) so the relocated Publish/Settings/
     // Usage fields stay part of the form and still get submitted on save.
-    var $drawer = $('<div id="wa-settings-drawer"><div class="wa-drawer-panel"></div></div>').appendTo('#post');
-    var $panel = $drawer.find('.wa-drawer-panel');
+    var $sidebar = $('<div class="wa-sidebar-panel"></div>').insertAfter('#wa-style-panel-slot');
 
     ['#submitdiv', '#wa_form_settings', '#wa_form_integrations', '#wa_form_usage'].forEach(function (selector) {
         var $box = $(selector);
-        if ($box.length) $panel.append($box);
-    });
-
-    $('#wa-open-settings').on('click', function () {
-        $drawer.addClass('wa-drawer-open');
-    });
-
-    $drawer.on('click', function (e) {
-        if (e.target === this) $drawer.removeClass('wa-drawer-open');
-    });
-
-    $(document).on('keydown', function (e) {
-        if (e.key === 'Escape') $drawer.removeClass('wa-drawer-open');
+        if ($box.length) $sidebar.append($box);
     });
 });
