@@ -348,8 +348,14 @@ function alchemy_forms_style_metabox($post) {
     $button_hover       = alchemy_forms_sanitize_hex($style['button_hover_color'] ?? '', $d['button_hover_color']);
     $button_padding     = alchemy_forms_sanitize_px($style['button_padding'] ?? null, $d['button_padding']);
     $button_font_size   = alchemy_forms_sanitize_px($style['button_font_size'] ?? null, $d['button_font_size']);
+    $button_width_opts  = alchemy_forms_button_width_options();
+    $button_align_opts  = alchemy_forms_button_align_options();
+    $button_width       = (isset($style['button_width']) && array_key_exists($style['button_width'], $button_width_opts)) ? $style['button_width'] : $d['button_width'];
+    $button_align       = (isset($style['button_align']) && array_key_exists($style['button_align'], $button_align_opts)) ? $style['button_align'] : $d['button_align'];
     $container_bg       = alchemy_forms_sanitize_hex($style['container_bg_color'] ?? '', $d['container_bg_color']);
     $container_opacity  = alchemy_forms_sanitize_px($style['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
+    $container_padding  = alchemy_forms_sanitize_px($style['container_padding'] ?? null, $d['container_padding']);
+    $container_border_w = alchemy_forms_sanitize_px($style['container_border_width'] ?? null, $d['container_border_width'], 0, 50);
     ?>
     <h4><?php esc_html_e('Colors', 'alchemy-forms'); ?></h4>
     <p>
@@ -422,6 +428,22 @@ function alchemy_forms_style_metabox($post) {
         <label for="wa_style_button_font_size"><?php esc_html_e('Font size (px)', 'alchemy-forms'); ?></label><br>
         <input type="number" id="wa_style_button_font_size" class="small-text" name="wa_settings[style][button_font_size]" value="<?php echo esc_attr($button_font_size); ?>" min="0" max="999" step="1">
     </p>
+    <p>
+        <label for="wa_style_button_width"><?php esc_html_e('Width', 'alchemy-forms'); ?></label>
+        <select id="wa_style_button_width" name="wa_settings[style][button_width]" class="widefat">
+            <?php foreach ($button_width_opts as $key => $label) : ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($button_width, $key); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label for="wa_style_button_align"><?php esc_html_e('Alignment (when Auto width)', 'alchemy-forms'); ?></label>
+        <select id="wa_style_button_align" name="wa_settings[style][button_align]" class="widefat">
+            <?php foreach ($button_align_opts as $key => $label) : ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($button_align, $key); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
 
     <h4><?php esc_html_e('Container', 'alchemy-forms'); ?></h4>
     <p>
@@ -431,6 +453,15 @@ function alchemy_forms_style_metabox($post) {
     <p>
         <label for="wa_style_container_opacity"><?php esc_html_e('Background opacity', 'alchemy-forms'); ?> (<span id="wa_style_container_opacity_val"><?php echo esc_html($container_opacity); ?></span>%)</label><br>
         <input type="range" id="wa_style_container_opacity" name="wa_settings[style][container_bg_opacity]" value="<?php echo esc_attr($container_opacity); ?>" min="0" max="100" step="1">
+    </p>
+    <p>
+        <label for="wa_style_container_padding"><?php esc_html_e('Padding (px)', 'alchemy-forms'); ?></label><br>
+        <input type="number" id="wa_style_container_padding" class="small-text" name="wa_settings[style][container_padding]" value="<?php echo esc_attr($container_padding); ?>" min="0" max="999" step="1">
+    </p>
+    <p>
+        <label for="wa_style_container_border_width"><?php esc_html_e('Border width (px)', 'alchemy-forms'); ?></label><br>
+        <input type="number" id="wa_style_container_border_width" class="small-text" name="wa_settings[style][container_border_width]" value="<?php echo esc_attr($container_border_w); ?>" min="0" max="50" step="1">
+        <span class="description"><?php esc_html_e('Uses the Border color above. Set to 0 to remove.', 'alchemy-forms'); ?></span>
     </p>
     <?php
 }
@@ -601,9 +632,11 @@ add_action('save_post_wa_form', function ($post_id) {
         $settings['submit_text'] = isset($s['submit_text']) && $s['submit_text'] !== '' ? sanitize_text_field($s['submit_text']) : 'Submit';
         $settings['success_msg'] = isset($s['success_msg']) ? sanitize_textarea_field($s['success_msg']) : '';
 
-        $style_in  = (isset($s['style']) && is_array($s['style'])) ? $s['style'] : [];
-        $font_keys = array_keys(alchemy_forms_font_presets());
-        $d         = alchemy_forms_style_defaults();
+        $style_in         = (isset($s['style']) && is_array($s['style'])) ? $s['style'] : [];
+        $font_keys        = array_keys(alchemy_forms_font_presets());
+        $button_width_keys = array_keys(alchemy_forms_button_width_options());
+        $button_align_keys = array_keys(alchemy_forms_button_align_options());
+        $d                = alchemy_forms_style_defaults();
 
         $settings['style'] = [
             'primary_color'        => alchemy_forms_sanitize_hex($style_in['primary_color'] ?? '', $d['primary_color']),
@@ -621,8 +654,12 @@ add_action('save_post_wa_form', function ($post_id) {
             'button_hover_color'   => alchemy_forms_sanitize_hex($style_in['button_hover_color'] ?? '', $d['button_hover_color']),
             'button_padding'       => alchemy_forms_sanitize_px($style_in['button_padding'] ?? null, $d['button_padding']),
             'button_font_size'     => alchemy_forms_sanitize_px($style_in['button_font_size'] ?? null, $d['button_font_size']),
+            'button_width'         => (isset($style_in['button_width']) && in_array($style_in['button_width'], $button_width_keys, true)) ? $style_in['button_width'] : $d['button_width'],
+            'button_align'         => (isset($style_in['button_align']) && in_array($style_in['button_align'], $button_align_keys, true)) ? $style_in['button_align'] : $d['button_align'],
             'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', $d['container_bg_color']),
             'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100),
+            'container_padding'    => alchemy_forms_sanitize_px($style_in['container_padding'] ?? null, $d['container_padding']),
+            'container_border_width' => alchemy_forms_sanitize_px($style_in['container_border_width'] ?? null, $d['container_border_width'], 0, 50),
         ];
 
         $flodesk_in = (isset($s['integrations']['flodesk']) && is_array($s['integrations']['flodesk'])) ? $s['integrations']['flodesk'] : [];

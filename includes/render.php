@@ -269,7 +269,9 @@ function alchemy_forms_render_shortcode($atts) {
                         <?php foreach ((isset($steps[0]) ? $steps[0] : []) as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
                     </div>
 
-                    <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
+                    <div class="wa-form-submit-wrap">
+                        <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
+                    </div>
 
                 <?php else : ?>
                     <div class="wa-form-progress" data-label-template="<?php echo esc_attr(__('Step {n} of {total}', 'alchemy-forms')); ?>">
@@ -492,8 +494,16 @@ function alchemy_forms_resolve_style($style_settings) {
     $button_hover      = alchemy_forms_sanitize_hex($style_settings['button_hover_color'] ?? '', $d['button_hover_color']);
     $button_padding    = alchemy_forms_sanitize_px($style_settings['button_padding'] ?? null, $d['button_padding']);
     $button_font_size  = alchemy_forms_sanitize_px($style_settings['button_font_size'] ?? null, $d['button_font_size']);
-    $container_bg      = alchemy_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', $d['container_bg_color']);
-    $container_opacity = alchemy_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
+
+    $button_width_keys = array_keys(alchemy_forms_button_width_options());
+    $button_align_keys = array_keys(alchemy_forms_button_align_options());
+    $button_width      = (isset($style_settings['button_width']) && in_array($style_settings['button_width'], $button_width_keys, true)) ? $style_settings['button_width'] : $d['button_width'];
+    $button_align      = (isset($style_settings['button_align']) && in_array($style_settings['button_align'], $button_align_keys, true)) ? $style_settings['button_align'] : $d['button_align'];
+
+    $container_bg          = alchemy_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', $d['container_bg_color']);
+    $container_opacity     = alchemy_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
+    $container_padding     = alchemy_forms_sanitize_px($style_settings['container_padding'] ?? null, $d['container_padding']);
+    $container_border_width = alchemy_forms_sanitize_px($style_settings['container_border_width'] ?? null, $d['container_border_width'], 0, 50);
 
     [$cr, $cg, $cb] = alchemy_forms_hex_to_rgb($container_bg);
     $container_rgba = sprintf('rgba(%d, %d, %d, %s)', $cr, $cg, $cb, $container_opacity / 100);
@@ -520,7 +530,11 @@ function alchemy_forms_resolve_style($style_settings) {
         '--wa-button-bg-hover'  => $button_hover,
         '--wa-button-padding'   => $button_padding . 'px',
         '--wa-button-font-size' => $button_font_size . 'px',
+        '--wa-button-width'     => ($button_width === 'full') ? '100%' : 'auto',
+        '--wa-button-align'     => $button_align,
         '--wa-container-bg'     => $container_rgba,
+        '--wa-container-padding'      => $container_padding . 'px',
+        '--wa-container-border-width' => $container_border_width . 'px',
     ];
 
     $inline = '';
@@ -575,7 +589,11 @@ function alchemy_forms_frontend_css() {
   --wa-button-bg-hover: #22392B;
   --wa-button-padding: 13px;
   --wa-button-font-size: 15px;
+  --wa-button-width: auto;
+  --wa-button-align: left;
   --wa-container-bg: #FFFFFF;
+  --wa-container-padding: 40px;
+  --wa-container-border-width: 1px;
   max-width: 720px;
   margin: 0 auto;
   font-family: var(--wa-font-body);
@@ -584,7 +602,7 @@ function alchemy_forms_frontend_css() {
 }
 .wa-form-wrap *, .wa-form-wrap *::before, .wa-form-wrap *::after { box-sizing: inherit; }
 .wa-form-title { font-family: var(--wa-font-display); font-weight: 600; font-size: 1.75rem; color: var(--wa-primary-dark); margin: 0 0 1.25rem; }
-.wa-form { background: var(--wa-container-bg); border: 1px solid var(--wa-border); border-radius: calc(var(--wa-radius) + 6px); padding: 2.5rem; box-shadow: 0 1px 2px rgba(31,42,35,0.04), 0 8px 24px rgba(31,42,35,0.06); position: relative; }
+.wa-form { background: var(--wa-container-bg); border: var(--wa-container-border-width) solid var(--wa-border); border-radius: calc(var(--wa-radius) + 6px); padding: var(--wa-container-padding); box-shadow: 0 1px 2px rgba(31,42,35,0.04), 0 8px 24px rgba(31,42,35,0.06); position: relative; }
 .wa-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--wa-field-gap); }
 .wa-field--half { grid-column: span 1; }
 .wa-field--full { grid-column: 1 / -1; }
@@ -592,7 +610,7 @@ function alchemy_forms_frontend_css() {
 @media (max-width: 560px) {
   .wa-form-grid { grid-template-columns: 1fr; }
   .wa-field--half { grid-column: 1 / -1; }
-  .wa-form { padding: 1.75rem 1.5rem; }
+  .wa-form { padding: min(var(--wa-container-padding), 1.75rem) min(var(--wa-container-padding), 1.5rem); }
 }
 .wa-field label { display: block; font-weight: 500; font-size: var(--wa-label-font-size); color: var(--wa-label-color); margin-bottom: 0.4rem; }
 .wa-req { color: var(--wa-accent); margin-left: 2px; }
@@ -620,12 +638,16 @@ function alchemy_forms_frontend_css() {
 .wa-file-input input[type=file]::file-selector-button:hover { background: var(--wa-primary-dark); }
 .wa-file-hint { font-size: 0.78rem; color: var(--wa-muted); }
 .wa-form-submit {
-  margin-top: 1.75rem; font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: #fff;
+  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: #fff;
   background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
 }
 .wa-form-submit:hover { background: var(--wa-button-bg-hover); }
 .wa-form-submit:active { transform: translateY(1px); }
+/* Width/alignment only apply to the single-step submit button — the
+   multi-step nav row (Back/Next/Submit side by side) keeps its own sizing. */
+.wa-form-submit-wrap { margin-top: 1.75rem; text-align: var(--wa-button-align); }
+.wa-form-submit-wrap .wa-form-submit { width: var(--wa-button-width); }
 .wa-form-submit:focus-visible { outline: 2px solid var(--wa-accent); outline-offset: 2px; }
 .wa-form-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .wa-form-errors { background: var(--wa-error-bg); border: 1px solid var(--wa-error); border-radius: var(--wa-radius); padding: 0.9rem 1.1rem; margin-bottom: 1.5rem; }
@@ -658,7 +680,6 @@ function alchemy_forms_frontend_css() {
   transition: background 0.15s ease, transform 0.1s ease;
 }
 .wa-form-step-nav .wa-form-next:hover { background: var(--wa-button-bg-hover); }
-.wa-form-step-nav .wa-form-submit { margin-top: 0; }
 @media (prefers-reduced-motion: reduce) {
   .wa-form-submit, .wa-form-next, .wa-form-prev, .wa-field input, .wa-field select, .wa-field textarea, .wa-form-progress-fill { transition: none; }
 }

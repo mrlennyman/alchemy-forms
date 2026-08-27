@@ -240,8 +240,34 @@ function alchemy_forms_style_defaults() {
         'button_hover_color'   => '#22392B',
         'button_padding'       => 13,
         'button_font_size'     => 15,
+        'button_width'         => 'auto',
+        'button_align'         => 'left',
         'container_bg_color'   => '#FFFFFF',
         'container_bg_opacity' => 100,
+        'container_padding'    => 40,
+        'container_border_width' => 1,
+    ];
+}
+
+/**
+ * Submit button width options — "auto" fits the button to its text, "full"
+ * stretches it to the width of the form.
+ */
+function alchemy_forms_button_width_options() {
+    return [
+        'auto' => __('Auto (fits text)', 'alchemy-forms'),
+        'full' => __('Full width', 'alchemy-forms'),
+    ];
+}
+
+/**
+ * Submit button horizontal alignment, used when width is "auto".
+ */
+function alchemy_forms_button_align_options() {
+    return [
+        'left'   => __('Left', 'alchemy-forms'),
+        'center' => __('Center', 'alchemy-forms'),
+        'right'  => __('Right', 'alchemy-forms'),
     ];
 }
 
