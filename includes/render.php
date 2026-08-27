@@ -688,6 +688,13 @@ function alchemy_forms_frontend_css() {
 .wa-form-submit-wrap { margin-top: 1.75rem; text-align: var(--wa-button-align); }
 .wa-form-submit-wrap .wa-form-submit { width: var(--wa-button-width); }
 .wa-form-submit:focus-visible { outline: 2px solid var(--wa-accent); outline-offset: 2px; }
+.wa-form-submit--loading { color: transparent !important; pointer-events: none; position: relative; }
+.wa-form-submit--loading::after {
+  content: ''; position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+  border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%;
+  animation: wa-form-spin 0.6s linear infinite;
+}
+@keyframes wa-form-spin { to { transform: rotate(360deg); } }
 .wa-form-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .wa-form-errors { background: var(--wa-error-bg); border: 1px solid var(--wa-error); border-radius: var(--wa-radius); padding: 0.9rem 1.1rem; margin-bottom: 1.5rem; }
 .wa-form-errors ul { margin: 0; padding-left: 1.1rem; }
@@ -721,6 +728,7 @@ function alchemy_forms_frontend_css() {
 .wa-form-step-nav .wa-form-next:hover { background: var(--wa-button-bg-hover); }
 @media (prefers-reduced-motion: reduce) {
   .wa-form-submit, .wa-form-next, .wa-form-prev, .wa-field input, .wa-field select, .wa-field textarea, .wa-form-progress-fill { transition: none; }
+  .wa-form-submit--loading::after { animation-duration: 1.5s; }
 }
 CSS;
 }

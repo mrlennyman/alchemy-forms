@@ -147,7 +147,11 @@
             e.preventDefault();
 
             var submitBtn = formEl.querySelector('button[type=submit]');
-            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('wa-form-submit--loading');
+                submitBtn.setAttribute('aria-busy', 'true');
+            }
             clearAjaxError(formEl);
 
             var formData = new FormData(formEl);
@@ -170,7 +174,11 @@
                     newWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 })
                 .catch(function () {
-                    if (submitBtn) submitBtn.disabled = false;
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove('wa-form-submit--loading');
+                        submitBtn.removeAttribute('aria-busy');
+                    }
                     showAjaxError(formEl);
                 });
         });
