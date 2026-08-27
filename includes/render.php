@@ -228,7 +228,7 @@ function alchemy_forms_render_shortcode($atts) {
 
     ob_start();
     ?>
-    <div class="wa-form-wrap" style="<?php echo esc_attr($style['inline']); ?>">
+    <div class="wa-form-wrap" style="<?php echo esc_attr($style['inline']); ?>" data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>" data-title="<?php echo esc_attr($atts['title']); ?>" data-embed-post-id="<?php echo (int) get_the_ID(); ?>">
         <?php if ($atts['title'] !== '') : ?>
             <h2 class="wa-form-title"><?php echo esc_html($atts['title']); ?></h2>
         <?php endif; ?>
@@ -305,6 +305,42 @@ function alchemy_forms_render_shortcode($atts) {
     <?php
     return ob_get_clean();
 }
+
+/**
+ * Handles a form submission sent via fetch/FormData instead of a normal POST,
+ * so the page never navigates away — no full reload, no scroll jump back to
+ * the top. Re-invokes alchemy_forms_render_shortcode() with the same $_POST
+ * data a native submission would have had, and returns the resulting markup
+ * (success message, or the form again with validation errors) as-is.
+ *
+ * A Hidden field sourced from the embedding page (post_title/post_id/post_url)
+ * resolves via get_the_title()/get_the_ID()/get_permalink() with no
+ * arguments, which read WordPress's global "current post" — not set in an
+ * admin-ajax.php request. wa_embed_post_id (captured client-side from the
+ * page the form actually rendered on) restores that context first.
+ */
+function alchemy_forms_ajax_submit() {
+    $embed_post_id = isset($_POST['wa_embed_post_id']) ? (int) $_POST['wa_embed_post_id'] : 0;
+    if ($embed_post_id) {
+        $embed_post = get_post($embed_post_id);
+        if ($embed_post) {
+            global $post;
+            $post = $embed_post;
+            setup_postdata($post);
+        }
+    }
+
+    $html = alchemy_forms_render_shortcode([
+        'id'    => isset($_POST['wa_form_id']) ? (int) $_POST['wa_form_id'] : 0,
+        'title' => isset($_POST['wa_form_title']) ? sanitize_text_field(wp_unslash($_POST['wa_form_title'])) : '',
+    ]);
+
+    if ($embed_post_id) wp_reset_postdata();
+
+    wp_send_json_success(['html' => $html]);
+}
+add_action('wp_ajax_alchemy_forms_submit', 'alchemy_forms_ajax_submit');
+add_action('wp_ajax_nopriv_alchemy_forms_submit', 'alchemy_forms_ajax_submit');
 
 /**
  * Renders one field's markup within the form grid — label/legend + input,

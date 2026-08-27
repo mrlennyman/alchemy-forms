@@ -481,10 +481,15 @@ function alchemy_forms_integrations_metabox($post) {
 
     $enabled     = !empty($flodesk['enabled']);
     $api_key     = isset($flodesk['api_key']) ? $flodesk['api_key'] : '';
-    $segment_ids = (isset($flodesk['segment_ids']) && is_array($flodesk['segment_ids'])) ? implode(', ', $flodesk['segment_ids']) : '';
+    $segment_ids = (isset($flodesk['segment_ids']) && is_array($flodesk['segment_ids'])) ? $flodesk['segment_ids'] : [];
     $email_field = isset($flodesk['email_field']) ? $flodesk['email_field'] : '';
     $first_field = isset($flodesk['first_name_field']) ? $flodesk['first_name_field'] : '';
     $last_field  = isset($flodesk['last_name_field']) ? $flodesk['last_name_field'] : '';
+
+    $cached_segments = get_transient('alchemy_forms_flodesk_segments_' . $post->ID);
+    if (!is_array($cached_segments)) $cached_segments = [];
+    $known_segment_ids = wp_list_pluck($cached_segments, 'id');
+    $unlisted_segment_ids = array_diff($segment_ids, $known_segment_ids);
 
     // Fields the visitor can actually fill in — same exclusion as everywhere else
     // that offers a "pick one of this form's fields" dropdown.
@@ -536,10 +541,35 @@ function alchemy_forms_integrations_metabox($post) {
         </select>
     </p>
     <p>
-        <label for="wa_flodesk_segments"><?php esc_html_e('Segment ID(s)', 'alchemy-forms'); ?></label>
-        <input type="text" id="wa_flodesk_segments" name="wa_settings[integrations][flodesk][segment_ids]" value="<?php echo esc_attr($segment_ids); ?>" class="widefat" placeholder="<?php esc_attr_e('comma-separated segment IDs', 'alchemy-forms'); ?>">
-        <span class="description"><?php esc_html_e('Copy segment IDs from your Flodesk account (under Audience → Segments).', 'alchemy-forms'); ?></span>
+        <label><?php esc_html_e('Segments', 'alchemy-forms'); ?></label>
     </p>
+    <div id="wa-flodesk-segments-wrap" data-post-id="<?php echo (int) $post->ID; ?>" data-nonce="<?php echo esc_attr(wp_create_nonce('alchemy_forms_flodesk_segments_' . $post->ID)); ?>">
+        <div id="wa-flodesk-segments-list">
+            <?php foreach ($cached_segments as $segment) : ?>
+                <label class="wa-choice-option" style="display:block;">
+                    <input type="checkbox" name="wa_settings[integrations][flodesk][segment_ids][]" value="<?php echo esc_attr($segment['id']); ?>" <?php checked(in_array($segment['id'], $segment_ids, true)); ?>>
+                    <?php echo esc_html($segment['name']); ?>
+                    <?php if (isset($segment['subscribers'])) : ?>
+                        <span class="description">(<?php echo esc_html(number_format_i18n($segment['subscribers'])); ?>)</span>
+                    <?php endif; ?>
+                </label>
+            <?php endforeach; ?>
+            <?php foreach ($unlisted_segment_ids as $legacy_id) : ?>
+                <label class="wa-choice-option" style="display:block;">
+                    <input type="checkbox" name="wa_settings[integrations][flodesk][segment_ids][]" value="<?php echo esc_attr($legacy_id); ?>" checked>
+                    <?php echo esc_html($legacy_id); ?>
+                    <span class="description"><?php esc_html_e('(not in the last refresh — may be renamed or deleted)', 'alchemy-forms'); ?></span>
+                </label>
+            <?php endforeach; ?>
+            <?php if (empty($cached_segments) && empty($unlisted_segment_ids)) : ?>
+                <p class="description"><?php esc_html_e('No segments loaded yet — click Refresh to fetch them from Flodesk.', 'alchemy-forms'); ?></p>
+            <?php endif; ?>
+        </div>
+        <p>
+            <button type="button" class="button button-secondary" id="wa-flodesk-refresh-segments"><?php esc_html_e('Refresh segments from Flodesk', 'alchemy-forms'); ?></button>
+            <span id="wa-flodesk-segments-status" class="description"></span>
+        </p>
+    </div>
     <?php
 }
 
@@ -675,9 +705,14 @@ add_action('save_post_wa_form', function ($post_id) {
 
         $flodesk_in = (isset($s['integrations']['flodesk']) && is_array($s['integrations']['flodesk'])) ? $s['integrations']['flodesk'] : [];
 
+        // Checkboxes from the segment picker submit an array; a value saved
+        // before that existed is still a comma/space-separated string.
         $flodesk_segment_ids = [];
         if (!empty($flodesk_in['segment_ids'])) {
-            foreach (preg_split('/[,\s]+/', (string) $flodesk_in['segment_ids']) as $segment_id) {
+            $raw_segment_ids = is_array($flodesk_in['segment_ids'])
+                ? $flodesk_in['segment_ids']
+                : preg_split('/[,\s]+/', (string) $flodesk_in['segment_ids']);
+            foreach ($raw_segment_ids as $segment_id) {
                 $segment_id = sanitize_text_field($segment_id);
                 if ($segment_id !== '') $flodesk_segment_ids[] = $segment_id;
             }

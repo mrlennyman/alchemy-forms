@@ -110,11 +110,78 @@
         showStep(initial, false);
     }
 
+    function clearAjaxError(formEl) {
+        var existing = formEl.querySelector('.wa-form-ajax-error');
+        if (existing) existing.remove();
+    }
+
+    function showAjaxError(formEl) {
+        var err = document.createElement('div');
+        err.className = 'wa-form-errors wa-form-ajax-error';
+        err.setAttribute('role', 'alert');
+        var ul = document.createElement('ul');
+        var li = document.createElement('li');
+        li.textContent = 'Something went wrong submitting the form — please try again.';
+        ul.appendChild(li);
+        err.appendChild(ul);
+        formEl.insertBefore(err, formEl.firstChild);
+    }
+
+    /**
+     * Submits via fetch/FormData instead of a normal POST, so the page never
+     * navigates away — no full reload, no scroll jump back to the top. The
+     * server re-runs the exact same rendering the shortcode always has
+     * (alchemy_forms_ajax_submit() in render.php just calls
+     * alchemy_forms_render_shortcode() again), so the returned markup is a
+     * complete, fresh .wa-form-wrap — success message, or the form again
+     * with validation errors — which replaces this one in place.
+     */
+    function initAjaxSubmit(wrap) {
+        var formEl = wrap.querySelector('.wa-form');
+        if (!formEl) return; // showing the success message — nothing left to submit
+
+        var ajaxUrl = wrap.getAttribute('data-ajax-url');
+        if (!ajaxUrl) return; // no endpoint known — falls back to a normal POST
+
+        formEl.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            var submitBtn = formEl.querySelector('button[type=submit]');
+            if (submitBtn) submitBtn.disabled = true;
+            clearAjaxError(formEl);
+
+            var formData = new FormData(formEl);
+            formData.append('action', 'alchemy_forms_submit');
+            formData.append('wa_form_title', wrap.getAttribute('data-title') || '');
+            formData.append('wa_embed_post_id', wrap.getAttribute('data-embed-post-id') || '0');
+
+            fetch(ajaxUrl, { method: 'POST', body: formData, credentials: 'same-origin' })
+                .then(function (res) { return res.json(); })
+                .then(function (json) {
+                    if (!json || !json.success || !json.data || !json.data.html) {
+                        throw new Error('bad response');
+                    }
+                    var temp = document.createElement('div');
+                    temp.innerHTML = json.data.html;
+                    var newWrap = temp.firstElementChild;
+                    if (!newWrap) throw new Error('empty response');
+                    wrap.replaceWith(newWrap);
+                    init(newWrap);
+                    newWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                })
+                .catch(function () {
+                    if (submitBtn) submitBtn.disabled = false;
+                    showAjaxError(formEl);
+                });
+        });
+    }
+
     function init(form) {
         refresh(form);
         form.addEventListener('change', function () { refresh(form); });
         form.addEventListener('input', function () { refresh(form); });
         initSteps(form);
+        initAjaxSubmit(form);
     }
 
     document.addEventListener('DOMContentLoaded', function () {

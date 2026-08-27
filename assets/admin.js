@@ -225,4 +225,51 @@ jQuery(function ($) {
         var $box = $(selector);
         if ($box.length) $sidebar.append($box);
     });
+
+    /* -------------------------------------------------------------------
+     * Flodesk segment picker — fetches the account's segments live so the
+     * admin picks from a real list instead of typing IDs by hand.
+     * ---------------------------------------------------------------- */
+    $('#wa-flodesk-refresh-segments').on('click', function () {
+        var $wrap   = $('#wa-flodesk-segments-wrap');
+        var $list   = $('#wa-flodesk-segments-list');
+        var $status = $('#wa-flodesk-segments-status');
+        var apiKey  = $('#wa_flodesk_api_key').val();
+
+        // Preserve whatever's currently checked so a refresh doesn't silently
+        // drop a selection the admin already made.
+        var checkedIds = $list.find('input[type=checkbox]:checked').map(function () {
+            return this.value;
+        }).get();
+
+        $status.text('Loading…');
+
+        $.post(ajaxurl, {
+            action: 'alchemy_forms_fetch_flodesk_segments',
+            post_id: $wrap.data('post-id'),
+            nonce: $wrap.data('nonce'),
+            api_key: apiKey
+        }).done(function (response) {
+            if (!response || !response.success || !response.data || !response.data.length) {
+                $status.text((response && response.data && typeof response.data === 'string') ? response.data : 'No segments found.');
+                return;
+            }
+
+            $list.empty();
+            response.data.forEach(function (segment) {
+                var $label = $('<label class="wa-choice-option" style="display:block;"></label>');
+                var $checkbox = $('<input type="checkbox" name="wa_settings[integrations][flodesk][segment_ids][]">')
+                    .val(segment.id)
+                    .prop('checked', checkedIds.indexOf(segment.id) !== -1);
+                $label.append($checkbox).append(document.createTextNode(' ' + segment.name));
+                if (segment.subscribers !== null && segment.subscribers !== undefined) {
+                    $label.append($('<span class="description"></span>').text(' (' + segment.subscribers + ')'));
+                }
+                $list.append($label);
+            });
+            $status.text('Updated.');
+        }).fail(function () {
+            $status.text('Request failed — please try again.');
+        });
+    });
 });
