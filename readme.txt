@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,6 +30,10 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 1.7.0 =
+* The Flodesk segment picker now fetches real segment names from your account instead of requiring segment IDs to be copied in by hand — click "Refresh segments from Flodesk" after entering an API key.
+* Forms now submit via AJAX instead of a normal page POST — no more full page reload and scroll-to-top on every submission, whether it succeeds or shows a validation error.
 
 = 1.6.0 =
 * Added optional placeholder text for text-like fields (single line text, email, phone, website/URL, number, paragraph text). Purely supplementary — the field's label still always renders, including when "Hide label" is on.
