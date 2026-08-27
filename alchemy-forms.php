@@ -1,18 +1,18 @@
 <?php
 /**
  * Plugin Name: Alchemy Forms
- * Plugin URI:  https://websitealchemy.co.nz
+ * Plugin URI:  https://websitealchemy.com
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     1.4.0
+ * Version:     1.4.1
  * Author:      Website Alchemy
- * Author URI:  https://websitealchemy.co.nz
+ * Author URI:  https://websitealchemy.com
  * License:     GPL-2.0-or-later
  * Text Domain: alchemy-forms
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('ALCHEMY_FORMS_VERSION', '1.4.0');
+define('ALCHEMY_FORMS_VERSION', '1.4.1');
 define('ALCHEMY_FORMS_DIR', plugin_dir_path(__FILE__));
 define('ALCHEMY_FORMS_URL', plugin_dir_url(__FILE__));
 
