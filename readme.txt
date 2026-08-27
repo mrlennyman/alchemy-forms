@@ -1,0 +1,60 @@
+=== Alchemy Forms ===
+Contributors: websitealchemy
+Tags: forms, form builder, contact form, multi-step forms, entries
+Requires at least: 6.2
+Tested up to: 7.0
+Requires PHP: 7.4
+Stable tag: 1.6.0
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Self-hosted WordPress form builder — drag-and-drop fields, per-form styling, multi-step forms with conditional logic, and an entries dashboard with CSV export.
+
+== Description ==
+
+Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy client portfolio.
+
+**Features**
+
+* Drag-and-drop field builder: text, email, phone, URL, number, date, paragraph, dropdown, radio, checkbox, single checkbox, file upload, hidden fields, HTML content blocks, and step breaks
+* Multi-step forms with a progress bar and Back/Next navigation
+* Per-field conditional visibility and per-field placeholder text
+* Per-form styling: colors, corner radius, spacing, font pairing, button width/alignment, and container padding/border/opacity
+* Entries dashboard with CSV export and email notification (multiple recipients supported) on each submission
+* Optional Flodesk integration — sync submissions to an audience via API key, with field mapping and segment assignment
+* One-click import from a Ninja Forms `.nff` export
+* Spam honeypot and nonce-verified submissions
+
+== Installation ==
+
+Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
+
+== Changelog ==
+
+= 1.6.0 =
+* Added optional placeholder text for text-like fields (single line text, email, phone, website/URL, number, paragraph text). Purely supplementary — the field's label still always renders, including when "Hide label" is on.
+
+= 1.5.0 =
+* Added Style controls for submit button width (auto/full) and alignment, and container padding and border width — all previously fixed values.
+
+= 1.4.1 =
+* Publish, Form Settings, Email Marketing, and Usage are now always visible in a sidebar next to the Style panel, instead of hidden behind a "Settings" button.
+* Fixed the plugin's listed URL (websitealchemy.co.nz → websitealchemy.com).
+
+= 1.4.0 =
+* Added an Email Marketing panel: sync submissions to a Flodesk audience via API key, with email/first name/last name field mapping and segment ID assignment.
+
+= 1.3.0 =
+* Added Single Checkbox and Hidden Field types, and taught the Ninja Forms importer to map onto them (including resolving common `{wp:...}` merge tags on hidden fields).
+
+= 1.2.0 =
+* The "Send submissions to" setting now accepts multiple email addresses, separated by commas, instead of exactly one.
+
+= 1.1.2 =
+* Fixed a bug where a leading, trailing, or consecutive page-break could leave a multi-step form's last step without a Submit button, or reopen the form on the wrong step after a validation error.
+* Fixed a bug where a checkbox- or file-triggered condition, if imported from Ninja Forms, silently dropped the dependent field's answers on every submission.
+* Fixed orphaned file uploads left behind in the Media Library when a submission with multiple file fields failed validation.
+* Deduplicated the style defaults hardcoded in two places.
+
+= 1.1.1 =
+* First release as Alchemy Forms (renamed from WA Forms). Code review pass completed; GitHub-based automatic updates wired in.
