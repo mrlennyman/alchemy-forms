@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.7.1
+Stable tag: 1.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,6 +30,11 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 1.8.0 =
+* Added a "Drop shadow" toggle plus color/opacity/blur controls for the form container, replacing the previously fixed shadow.
+* Added a "Placeholder text style" option (Normal/Italic) so placeholder hints can look visually distinct from real input text.
+* Added a "Space above button" control for the gap between the fields and the submit button/nav row, previously a fixed 1.75rem.
 
 = 1.7.1 =
 * Added a loading spinner to the submit button while an AJAX submission is in progress.
