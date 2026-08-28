@@ -212,6 +212,10 @@ jQuery(function ($) {
         $('#wa_style_container_opacity_val').text($(this).val());
     });
 
+    $('#wa_style_shadow_opacity').on('input', function () {
+        $('#wa_style_shadow_opacity_val').text($(this).val());
+    });
+
     /* -------------------------------------------------------------------
      * Sidebar — relocates the Publish/Settings/Usage boxes (rendered
      * normally by WordPress) into a second persistent column next to the

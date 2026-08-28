@@ -251,10 +251,27 @@ function alchemy_forms_style_defaults() {
         'button_font_size'     => 15,
         'button_width'         => 'auto',
         'button_align'         => 'left',
+        'button_spacing'       => 28,
+        'placeholder_font_style' => 'normal',
         'container_bg_color'   => '#FFFFFF',
         'container_bg_opacity' => 100,
         'container_padding'    => 40,
         'container_border_width' => 1,
+        'shadow_enabled'       => 1,
+        'shadow_color'         => '#1F2A23',
+        'shadow_opacity'       => 6,
+        'shadow_blur'          => 24,
+    ];
+}
+
+/**
+ * Placeholder text font style — "italic" is the common way designs visually
+ * distinguish a hint from real input text without a whole separate font.
+ */
+function alchemy_forms_placeholder_font_style_options() {
+    return [
+        'normal' => __('Normal', 'alchemy-forms'),
+        'italic' => __('Italic', 'alchemy-forms'),
     ];
 }
 

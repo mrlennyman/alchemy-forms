@@ -361,10 +361,17 @@ function alchemy_forms_style_metabox($post) {
     $button_align_opts  = alchemy_forms_button_align_options();
     $button_width       = (isset($style['button_width']) && array_key_exists($style['button_width'], $button_width_opts)) ? $style['button_width'] : $d['button_width'];
     $button_align       = (isset($style['button_align']) && array_key_exists($style['button_align'], $button_align_opts)) ? $style['button_align'] : $d['button_align'];
+    $button_spacing     = alchemy_forms_sanitize_px($style['button_spacing'] ?? null, $d['button_spacing']);
+    $placeholder_style_opts = alchemy_forms_placeholder_font_style_options();
+    $placeholder_font_style = (isset($style['placeholder_font_style']) && array_key_exists($style['placeholder_font_style'], $placeholder_style_opts)) ? $style['placeholder_font_style'] : $d['placeholder_font_style'];
     $container_bg       = alchemy_forms_sanitize_hex($style['container_bg_color'] ?? '', $d['container_bg_color']);
     $container_opacity  = alchemy_forms_sanitize_px($style['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
     $container_padding  = alchemy_forms_sanitize_px($style['container_padding'] ?? null, $d['container_padding']);
     $container_border_w = alchemy_forms_sanitize_px($style['container_border_width'] ?? null, $d['container_border_width'], 0, 50);
+    $shadow_enabled     = isset($style['shadow_enabled']) ? !empty($style['shadow_enabled']) : !empty($d['shadow_enabled']);
+    $shadow_color       = alchemy_forms_sanitize_hex($style['shadow_color'] ?? '', $d['shadow_color']);
+    $shadow_opacity     = alchemy_forms_sanitize_px($style['shadow_opacity'] ?? null, $d['shadow_opacity'], 0, 100);
+    $shadow_blur        = alchemy_forms_sanitize_px($style['shadow_blur'] ?? null, $d['shadow_blur'], 0, 100);
     ?>
     <h4><?php esc_html_e('Colors', 'alchemy-forms'); ?></h4>
     <p>
@@ -382,6 +389,14 @@ function alchemy_forms_style_metabox($post) {
     <p>
         <label for="wa_style_placeholder"><?php esc_html_e('Placeholder text color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_placeholder" class="wa-color-field" name="wa_settings[style][placeholder_color]" value="<?php echo esc_attr($placeholder); ?>">
+    </p>
+    <p>
+        <label for="wa_style_placeholder_font_style"><?php esc_html_e('Placeholder text style', 'alchemy-forms'); ?></label>
+        <select id="wa_style_placeholder_font_style" name="wa_settings[style][placeholder_font_style]" class="widefat">
+            <?php foreach ($placeholder_style_opts as $key => $label) : ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($placeholder_font_style, $key); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
     </p>
     <p>
         <label for="wa_style_radius"><?php esc_html_e('Corner radius (px)', 'alchemy-forms'); ?></label><br>
@@ -453,6 +468,10 @@ function alchemy_forms_style_metabox($post) {
             <?php endforeach; ?>
         </select>
     </p>
+    <p>
+        <label for="wa_style_button_spacing"><?php esc_html_e('Space above button (px)', 'alchemy-forms'); ?></label><br>
+        <input type="number" id="wa_style_button_spacing" class="small-text" name="wa_settings[style][button_spacing]" value="<?php echo esc_attr($button_spacing); ?>" min="0" max="200" step="1">
+    </p>
 
     <h4><?php esc_html_e('Container', 'alchemy-forms'); ?></h4>
     <p>
@@ -471,6 +490,24 @@ function alchemy_forms_style_metabox($post) {
         <label for="wa_style_container_border_width"><?php esc_html_e('Border width (px)', 'alchemy-forms'); ?></label><br>
         <input type="number" id="wa_style_container_border_width" class="small-text" name="wa_settings[style][container_border_width]" value="<?php echo esc_attr($container_border_w); ?>" min="0" max="50" step="1">
         <span class="description"><?php esc_html_e('Uses the Border color above. Set to 0 to remove.', 'alchemy-forms'); ?></span>
+    </p>
+    <p>
+        <label>
+            <input type="checkbox" name="wa_settings[style][shadow_enabled]" value="1" <?php checked($shadow_enabled); ?>>
+            <?php esc_html_e('Drop shadow', 'alchemy-forms'); ?>
+        </label>
+    </p>
+    <p>
+        <label for="wa_style_shadow_color"><?php esc_html_e('Shadow color', 'alchemy-forms'); ?></label><br>
+        <input type="text" id="wa_style_shadow_color" class="wa-color-field" name="wa_settings[style][shadow_color]" value="<?php echo esc_attr($shadow_color); ?>">
+    </p>
+    <p>
+        <label for="wa_style_shadow_opacity"><?php esc_html_e('Shadow opacity', 'alchemy-forms'); ?> (<span id="wa_style_shadow_opacity_val"><?php echo esc_html($shadow_opacity); ?></span>%)</label><br>
+        <input type="range" id="wa_style_shadow_opacity" name="wa_settings[style][shadow_opacity]" value="<?php echo esc_attr($shadow_opacity); ?>" min="0" max="100" step="1">
+    </p>
+    <p>
+        <label for="wa_style_shadow_blur"><?php esc_html_e('Shadow blur (px)', 'alchemy-forms'); ?></label><br>
+        <input type="number" id="wa_style_shadow_blur" class="small-text" name="wa_settings[style][shadow_blur]" value="<?php echo esc_attr($shadow_blur); ?>" min="0" max="100" step="1">
     </p>
     <?php
 }
@@ -677,6 +714,7 @@ add_action('save_post_wa_form', function ($post_id) {
         $font_keys        = array_keys(alchemy_forms_font_presets());
         $button_width_keys = array_keys(alchemy_forms_button_width_options());
         $button_align_keys = array_keys(alchemy_forms_button_align_options());
+        $placeholder_style_keys = array_keys(alchemy_forms_placeholder_font_style_options());
         $d                = alchemy_forms_style_defaults();
 
         $settings['style'] = [
@@ -697,10 +735,16 @@ add_action('save_post_wa_form', function ($post_id) {
             'button_font_size'     => alchemy_forms_sanitize_px($style_in['button_font_size'] ?? null, $d['button_font_size']),
             'button_width'         => (isset($style_in['button_width']) && in_array($style_in['button_width'], $button_width_keys, true)) ? $style_in['button_width'] : $d['button_width'],
             'button_align'         => (isset($style_in['button_align']) && in_array($style_in['button_align'], $button_align_keys, true)) ? $style_in['button_align'] : $d['button_align'],
+            'button_spacing'       => alchemy_forms_sanitize_px($style_in['button_spacing'] ?? null, $d['button_spacing'], 0, 200),
+            'placeholder_font_style' => (isset($style_in['placeholder_font_style']) && in_array($style_in['placeholder_font_style'], $placeholder_style_keys, true)) ? $style_in['placeholder_font_style'] : $d['placeholder_font_style'],
             'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', $d['container_bg_color']),
             'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100),
             'container_padding'    => alchemy_forms_sanitize_px($style_in['container_padding'] ?? null, $d['container_padding']),
             'container_border_width' => alchemy_forms_sanitize_px($style_in['container_border_width'] ?? null, $d['container_border_width'], 0, 50),
+            'shadow_enabled'       => !empty($style_in['shadow_enabled']) ? 1 : 0,
+            'shadow_color'         => alchemy_forms_sanitize_hex($style_in['shadow_color'] ?? '', $d['shadow_color']),
+            'shadow_opacity'       => alchemy_forms_sanitize_px($style_in['shadow_opacity'] ?? null, $d['shadow_opacity'], 0, 100),
+            'shadow_blur'          => alchemy_forms_sanitize_px($style_in['shadow_blur'] ?? null, $d['shadow_blur'], 0, 100),
         ];
 
         $flodesk_in = (isset($s['integrations']['flodesk']) && is_array($s['integrations']['flodesk'])) ? $s['integrations']['flodesk'] : [];
