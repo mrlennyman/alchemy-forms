@@ -765,17 +765,14 @@ function alchemy_forms_frontend_css() {
 .wa-form-step.wa-form-step--active { display: block; }
 .wa-form-step-title { font-family: var(--wa-font-display); font-weight: 600; font-size: 1.25rem; color: var(--wa-step-color); margin: 0 0 1.25rem; }
 .wa-form-step-nav { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-top: var(--wa-button-spacing); }
-.wa-form-step-nav .wa-form-prev {
-  margin-right: auto; font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-text);
-  background: transparent; border: 1px solid var(--wa-border); border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-.wa-form-step-nav .wa-form-prev:hover { background: var(--wa-bg); border-color: var(--wa-muted); }
+.wa-form-step-nav .wa-form-prev,
 .wa-form-step-nav .wa-form-next {
   font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-button-text);
   background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
 }
+.wa-form-step-nav .wa-form-prev { margin-right: auto; }
+.wa-form-step-nav .wa-form-prev:hover,
 .wa-form-step-nav .wa-form-next:hover { background: var(--wa-button-bg-hover); }
 @media (prefers-reduced-motion: reduce) {
   .wa-form-submit, .wa-form-next, .wa-form-prev, .wa-field input, .wa-field select, .wa-field textarea, .wa-form-progress-fill { transition: none; }
