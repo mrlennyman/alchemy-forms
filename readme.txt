@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.9.1
+Stable tag: 1.9.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,6 +30,9 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 1.9.2 =
+* Fixed the multi-step Back button not picking up the Button section's colors — it was styled as a separate transparent/outlined secondary button; now matches Next/Submit exactly.
 
 = 1.9.1 =
 * Added a "Secondary text color" option (Colors section) for the "Step X of Y" label, file upload hint text, success message text, and the Back button's hover border — previously all hardcoded to one fixed color.
