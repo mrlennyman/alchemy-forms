@@ -252,6 +252,7 @@ function alchemy_forms_style_defaults() {
         'button_width'         => 'auto',
         'button_align'         => 'left',
         'button_spacing'       => 28,
+        'placeholder_font'       => 'inherit',
         'placeholder_font_style' => 'normal',
         'container_bg_color'   => '#FFFFFF',
         'container_bg_opacity' => 100,
@@ -273,6 +274,22 @@ function alchemy_forms_placeholder_font_style_options() {
         'normal' => __('Normal', 'alchemy-forms'),
         'italic' => __('Italic', 'alchemy-forms'),
     ];
+}
+
+/**
+ * Placeholder font-family options — "inherit" (default) uses whatever the
+ * form's own Font pairing already sets for body text; anything else picks a
+ * different preset's body font for placeholder text only, independent of
+ * what real input text uses. Reuses the same curated presets as Font
+ * pairing rather than free-text entry, so there's no risk of an invalid or
+ * unloaded font name.
+ */
+function alchemy_forms_placeholder_font_options() {
+    $options = ['inherit' => __('Match body font', 'alchemy-forms')];
+    foreach (alchemy_forms_font_presets() as $key => $preset) {
+        $options[$key] = $preset['label'];
+    }
+    return $options;
 }
 
 /**

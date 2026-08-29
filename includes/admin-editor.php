@@ -364,6 +364,8 @@ function alchemy_forms_style_metabox($post) {
     $button_spacing     = alchemy_forms_sanitize_px($style['button_spacing'] ?? null, $d['button_spacing']);
     $placeholder_style_opts = alchemy_forms_placeholder_font_style_options();
     $placeholder_font_style = (isset($style['placeholder_font_style']) && array_key_exists($style['placeholder_font_style'], $placeholder_style_opts)) ? $style['placeholder_font_style'] : $d['placeholder_font_style'];
+    $placeholder_font_opts  = alchemy_forms_placeholder_font_options();
+    $placeholder_font       = (isset($style['placeholder_font']) && array_key_exists($style['placeholder_font'], $placeholder_font_opts)) ? $style['placeholder_font'] : $d['placeholder_font'];
     $container_bg       = alchemy_forms_sanitize_hex($style['container_bg_color'] ?? '', $d['container_bg_color']);
     $container_opacity  = alchemy_forms_sanitize_px($style['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
     $container_padding  = alchemy_forms_sanitize_px($style['container_padding'] ?? null, $d['container_padding']);
@@ -389,6 +391,15 @@ function alchemy_forms_style_metabox($post) {
     <p>
         <label for="wa_style_placeholder"><?php esc_html_e('Placeholder text color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_placeholder" class="wa-color-field" name="wa_settings[style][placeholder_color]" value="<?php echo esc_attr($placeholder); ?>">
+    </p>
+    <p>
+        <label for="wa_style_placeholder_font"><?php esc_html_e('Placeholder font', 'alchemy-forms'); ?></label>
+        <select id="wa_style_placeholder_font" name="wa_settings[style][placeholder_font]" class="widefat">
+            <?php foreach ($placeholder_font_opts as $key => $label) : ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($placeholder_font, $key); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <span class="description"><?php esc_html_e('Independent of the Font pairing below, which sets the font for real input text.', 'alchemy-forms'); ?></span>
     </p>
     <p>
         <label for="wa_style_placeholder_font_style"><?php esc_html_e('Placeholder text style', 'alchemy-forms'); ?></label>
@@ -715,6 +726,7 @@ add_action('save_post_wa_form', function ($post_id) {
         $button_width_keys = array_keys(alchemy_forms_button_width_options());
         $button_align_keys = array_keys(alchemy_forms_button_align_options());
         $placeholder_style_keys = array_keys(alchemy_forms_placeholder_font_style_options());
+        $placeholder_font_keys  = array_keys(alchemy_forms_placeholder_font_options());
         $d                = alchemy_forms_style_defaults();
 
         $settings['style'] = [
@@ -736,6 +748,7 @@ add_action('save_post_wa_form', function ($post_id) {
             'button_width'         => (isset($style_in['button_width']) && in_array($style_in['button_width'], $button_width_keys, true)) ? $style_in['button_width'] : $d['button_width'],
             'button_align'         => (isset($style_in['button_align']) && in_array($style_in['button_align'], $button_align_keys, true)) ? $style_in['button_align'] : $d['button_align'],
             'button_spacing'       => alchemy_forms_sanitize_px($style_in['button_spacing'] ?? null, $d['button_spacing'], 0, 200),
+            'placeholder_font'     => (isset($style_in['placeholder_font']) && in_array($style_in['placeholder_font'], $placeholder_font_keys, true)) ? $style_in['placeholder_font'] : $d['placeholder_font'],
             'placeholder_font_style' => (isset($style_in['placeholder_font_style']) && in_array($style_in['placeholder_font_style'], $placeholder_style_keys, true)) ? $style_in['placeholder_font_style'] : $d['placeholder_font_style'],
             'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', $d['container_bg_color']),
             'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100),
