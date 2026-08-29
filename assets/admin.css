@@ -306,10 +306,18 @@ body.alchemy-forms-builder #wa_form_fields > .inside {
     box-sizing: border-box;
 }
 .wa-sidebar-panel .postbox {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+    border: 1px solid #c3c4c7;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .wa-sidebar-panel .postbox:last-child {
     margin-bottom: 0;
+}
+.wa-sidebar-panel .postbox > .hndle,
+.wa-sidebar-panel .postbox > .postbox-header {
+    background: #f6f7f7;
+    border-bottom: 1px solid #dcdcde;
 }
 
 /* -------------------------------------------------------------------------

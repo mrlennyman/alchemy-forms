@@ -355,6 +355,7 @@ function alchemy_forms_style_metabox($post) {
     $input_bg           = alchemy_forms_sanitize_hex($style['input_bg_color'] ?? '', $d['input_bg_color']);
     $button_bg          = alchemy_forms_sanitize_hex($style['button_bg_color'] ?? '', $d['button_bg_color']);
     $button_hover       = alchemy_forms_sanitize_hex($style['button_hover_color'] ?? '', $d['button_hover_color']);
+    $button_text        = alchemy_forms_sanitize_hex($style['button_text_color'] ?? '', $d['button_text_color']);
     $button_padding     = alchemy_forms_sanitize_px($style['button_padding'] ?? null, $d['button_padding']);
     $button_font_size   = alchemy_forms_sanitize_px($style['button_font_size'] ?? null, $d['button_font_size']);
     $button_width_opts  = alchemy_forms_button_width_options();
@@ -366,6 +367,7 @@ function alchemy_forms_style_metabox($post) {
     $placeholder_font_style = (isset($style['placeholder_font_style']) && array_key_exists($style['placeholder_font_style'], $placeholder_style_opts)) ? $style['placeholder_font_style'] : $d['placeholder_font_style'];
     $placeholder_font_opts  = alchemy_forms_placeholder_font_options();
     $placeholder_font       = (isset($style['placeholder_font']) && array_key_exists($style['placeholder_font'], $placeholder_font_opts)) ? $style['placeholder_font'] : $d['placeholder_font'];
+    $step_color         = alchemy_forms_sanitize_hex($style['step_color'] ?? '', $d['step_color']);
     $container_bg       = alchemy_forms_sanitize_hex($style['container_bg_color'] ?? '', $d['container_bg_color']);
     $container_opacity  = alchemy_forms_sanitize_px($style['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
     $container_padding  = alchemy_forms_sanitize_px($style['container_padding'] ?? null, $d['container_padding']);
@@ -456,6 +458,10 @@ function alchemy_forms_style_metabox($post) {
         <input type="text" id="wa_style_button_hover" class="wa-color-field" name="wa_settings[style][button_hover_color]" value="<?php echo esc_attr($button_hover); ?>">
     </p>
     <p>
+        <label for="wa_style_button_text"><?php esc_html_e('Text color', 'alchemy-forms'); ?></label><br>
+        <input type="text" id="wa_style_button_text" class="wa-color-field" name="wa_settings[style][button_text_color]" value="<?php echo esc_attr($button_text); ?>">
+    </p>
+    <p>
         <label for="wa_style_button_padding"><?php esc_html_e('Padding (px)', 'alchemy-forms'); ?></label><br>
         <input type="number" id="wa_style_button_padding" class="small-text" name="wa_settings[style][button_padding]" value="<?php echo esc_attr($button_padding); ?>" min="0" max="999" step="1">
     </p>
@@ -482,6 +488,13 @@ function alchemy_forms_style_metabox($post) {
     <p>
         <label for="wa_style_button_spacing"><?php esc_html_e('Space above button (px)', 'alchemy-forms'); ?></label><br>
         <input type="number" id="wa_style_button_spacing" class="small-text" name="wa_settings[style][button_spacing]" value="<?php echo esc_attr($button_spacing); ?>" min="0" max="200" step="1">
+    </p>
+
+    <h4><?php esc_html_e('Steps', 'alchemy-forms'); ?></h4>
+    <p>
+        <label for="wa_style_step_color"><?php esc_html_e('Step indicator color', 'alchemy-forms'); ?></label><br>
+        <input type="text" id="wa_style_step_color" class="wa-color-field" name="wa_settings[style][step_color]" value="<?php echo esc_attr($step_color); ?>">
+        <span class="description"><?php esc_html_e('Used for the progress bar and step titles on multi-step forms.', 'alchemy-forms'); ?></span>
     </p>
 
     <h4><?php esc_html_e('Container', 'alchemy-forms'); ?></h4>
@@ -743,6 +756,7 @@ add_action('save_post_wa_form', function ($post_id) {
             'input_bg_color'       => alchemy_forms_sanitize_hex($style_in['input_bg_color'] ?? '', $d['input_bg_color']),
             'button_bg_color'      => alchemy_forms_sanitize_hex($style_in['button_bg_color'] ?? '', $d['button_bg_color']),
             'button_hover_color'   => alchemy_forms_sanitize_hex($style_in['button_hover_color'] ?? '', $d['button_hover_color']),
+            'button_text_color'    => alchemy_forms_sanitize_hex($style_in['button_text_color'] ?? '', $d['button_text_color']),
             'button_padding'       => alchemy_forms_sanitize_px($style_in['button_padding'] ?? null, $d['button_padding']),
             'button_font_size'     => alchemy_forms_sanitize_px($style_in['button_font_size'] ?? null, $d['button_font_size']),
             'button_width'         => (isset($style_in['button_width']) && in_array($style_in['button_width'], $button_width_keys, true)) ? $style_in['button_width'] : $d['button_width'],
@@ -750,6 +764,7 @@ add_action('save_post_wa_form', function ($post_id) {
             'button_spacing'       => alchemy_forms_sanitize_px($style_in['button_spacing'] ?? null, $d['button_spacing'], 0, 200),
             'placeholder_font'     => (isset($style_in['placeholder_font']) && in_array($style_in['placeholder_font'], $placeholder_font_keys, true)) ? $style_in['placeholder_font'] : $d['placeholder_font'],
             'placeholder_font_style' => (isset($style_in['placeholder_font_style']) && in_array($style_in['placeholder_font_style'], $placeholder_style_keys, true)) ? $style_in['placeholder_font_style'] : $d['placeholder_font_style'],
+            'step_color'           => alchemy_forms_sanitize_hex($style_in['step_color'] ?? '', $d['step_color']),
             'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', $d['container_bg_color']),
             'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100),
             'container_padding'    => alchemy_forms_sanitize_px($style_in['container_padding'] ?? null, $d['container_padding']),

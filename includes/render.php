@@ -531,6 +531,9 @@ function alchemy_forms_resolve_style($style_settings) {
     $input_bg          = alchemy_forms_sanitize_hex($style_settings['input_bg_color'] ?? '', $d['input_bg_color']);
     $button_bg         = alchemy_forms_sanitize_hex($style_settings['button_bg_color'] ?? '', $d['button_bg_color']);
     $button_hover      = alchemy_forms_sanitize_hex($style_settings['button_hover_color'] ?? '', $d['button_hover_color']);
+    $button_text       = alchemy_forms_sanitize_hex($style_settings['button_text_color'] ?? '', $d['button_text_color']);
+    [$btr, $btg, $btb] = alchemy_forms_hex_to_rgb($button_text);
+    $button_text_dim   = sprintf('rgba(%d, %d, %d, 0.4)', $btr, $btg, $btb);
     $button_padding    = alchemy_forms_sanitize_px($style_settings['button_padding'] ?? null, $d['button_padding']);
     $button_font_size  = alchemy_forms_sanitize_px($style_settings['button_font_size'] ?? null, $d['button_font_size']);
 
@@ -542,6 +545,8 @@ function alchemy_forms_resolve_style($style_settings) {
 
     $placeholder_style_keys = array_keys(alchemy_forms_placeholder_font_style_options());
     $placeholder_font_style = (isset($style_settings['placeholder_font_style']) && in_array($style_settings['placeholder_font_style'], $placeholder_style_keys, true)) ? $style_settings['placeholder_font_style'] : $d['placeholder_font_style'];
+
+    $step_color = alchemy_forms_sanitize_hex($style_settings['step_color'] ?? '', $d['step_color']);
 
     $container_bg          = alchemy_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', $d['container_bg_color']);
     $container_opacity     = alchemy_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
@@ -590,6 +595,8 @@ function alchemy_forms_resolve_style($style_settings) {
         '--wa-input-bg'         => $input_bg,
         '--wa-button-bg'        => $button_bg,
         '--wa-button-bg-hover'  => $button_hover,
+        '--wa-button-text'      => $button_text,
+        '--wa-button-text-dim'  => $button_text_dim,
         '--wa-button-padding'   => $button_padding . 'px',
         '--wa-button-font-size' => $button_font_size . 'px',
         '--wa-button-width'     => ($button_width === 'full') ? '100%' : 'auto',
@@ -597,6 +604,7 @@ function alchemy_forms_resolve_style($style_settings) {
         '--wa-button-spacing'   => $button_spacing . 'px',
         '--wa-placeholder-font'       => $placeholder_font_preset['body'],
         '--wa-placeholder-font-style' => $placeholder_font_style,
+        '--wa-step-color'       => $step_color,
         '--wa-container-bg'     => $container_rgba,
         '--wa-container-padding'      => $container_padding . 'px',
         '--wa-container-border-width' => $container_border_width . 'px',
@@ -660,6 +668,8 @@ function alchemy_forms_frontend_css() {
   --wa-input-bg: #F6F8F3;
   --wa-button-bg: #2F4F3E;
   --wa-button-bg-hover: #22392B;
+  --wa-button-text: #FFFFFF;
+  --wa-button-text-dim: rgba(255,255,255,0.4);
   --wa-button-padding: 13px;
   --wa-button-font-size: 15px;
   --wa-button-width: auto;
@@ -667,6 +677,7 @@ function alchemy_forms_frontend_css() {
   --wa-button-spacing: 28px;
   --wa-placeholder-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --wa-placeholder-font-style: normal;
+  --wa-step-color: #2F4F3E;
   --wa-container-bg: #FFFFFF;
   --wa-container-padding: 40px;
   --wa-container-border-width: 1px;
@@ -715,7 +726,7 @@ function alchemy_forms_frontend_css() {
 .wa-file-input input[type=file]::file-selector-button:hover { background: var(--wa-primary-dark); }
 .wa-file-hint { font-size: 0.78rem; color: var(--wa-muted); }
 .wa-form-submit {
-  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: #fff;
+  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-button-text);
   background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
 }
@@ -729,7 +740,7 @@ function alchemy_forms_frontend_css() {
 .wa-form-submit--loading { color: transparent !important; pointer-events: none; position: relative; }
 .wa-form-submit--loading::after {
   content: ''; position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
-  border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%;
+  border: 2px solid var(--wa-button-text-dim); border-top-color: var(--wa-button-text); border-radius: 50%;
   animation: wa-form-spin 0.6s linear infinite;
 }
 @keyframes wa-form-spin { to { transform: rotate(360deg); } }
@@ -747,10 +758,10 @@ function alchemy_forms_frontend_css() {
 .wa-form-progress { margin-bottom: 1.5rem; }
 .wa-form-progress-label { font-size: 0.82rem; color: var(--wa-muted); margin-bottom: 0.4rem; }
 .wa-form-progress-bar { background: var(--wa-border); border-radius: 999px; height: 6px; overflow: hidden; }
-.wa-form-progress-fill { background: var(--wa-primary); height: 100%; width: 0; transition: width 0.25s ease; }
+.wa-form-progress-fill { background: var(--wa-step-color); height: 100%; width: 0; transition: width 0.25s ease; }
 .wa-form-step { display: none; }
 .wa-form-step.wa-form-step--active { display: block; }
-.wa-form-step-title { font-family: var(--wa-font-display); font-weight: 600; font-size: 1.25rem; color: var(--wa-primary-dark); margin: 0 0 1.25rem; }
+.wa-form-step-title { font-family: var(--wa-font-display); font-weight: 600; font-size: 1.25rem; color: var(--wa-step-color); margin: 0 0 1.25rem; }
 .wa-form-step-nav { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-top: var(--wa-button-spacing); }
 .wa-form-step-nav .wa-form-prev {
   margin-right: auto; font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-text);
@@ -759,7 +770,7 @@ function alchemy_forms_frontend_css() {
 }
 .wa-form-step-nav .wa-form-prev:hover { background: var(--wa-bg); border-color: var(--wa-muted); }
 .wa-form-step-nav .wa-form-next {
-  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: #fff;
+  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-button-text);
   background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
 }
