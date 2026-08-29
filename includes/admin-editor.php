@@ -346,6 +346,7 @@ function alchemy_forms_style_metabox($post) {
     $accent             = alchemy_forms_sanitize_hex($style['accent_color'] ?? '', $d['accent_color']);
     $border             = alchemy_forms_sanitize_hex($style['border_color'] ?? '', $d['border_color']);
     $placeholder        = alchemy_forms_sanitize_hex($style['placeholder_color'] ?? '', $d['placeholder_color']);
+    $muted              = alchemy_forms_sanitize_hex($style['muted_color'] ?? '', $d['muted_color']);
     $radius             = alchemy_forms_sanitize_px($style['radius'] ?? null, $d['radius']);
     $font               = !empty($style['font']) ? $style['font'] : 'default';
     $label_color        = alchemy_forms_sanitize_hex($style['label_color'] ?? '', $d['label_color']);
@@ -393,6 +394,11 @@ function alchemy_forms_style_metabox($post) {
     <p>
         <label for="wa_style_placeholder"><?php esc_html_e('Placeholder text color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_placeholder" class="wa-color-field" name="wa_settings[style][placeholder_color]" value="<?php echo esc_attr($placeholder); ?>">
+    </p>
+    <p>
+        <label for="wa_style_muted"><?php esc_html_e('Secondary text color', 'alchemy-forms'); ?></label><br>
+        <input type="text" id="wa_style_muted" class="wa-color-field" name="wa_settings[style][muted_color]" value="<?php echo esc_attr($muted); ?>">
+        <span class="description"><?php esc_html_e('Used for the "Step X of Y" label, file upload hints, the success message text, and the Back button hover border.', 'alchemy-forms'); ?></span>
     </p>
     <p>
         <label for="wa_style_placeholder_font"><?php esc_html_e('Placeholder font', 'alchemy-forms'); ?></label>
@@ -747,6 +753,7 @@ add_action('save_post_wa_form', function ($post_id) {
             'accent_color'         => alchemy_forms_sanitize_hex($style_in['accent_color'] ?? '', $d['accent_color']),
             'border_color'         => alchemy_forms_sanitize_hex($style_in['border_color'] ?? '', $d['border_color']),
             'placeholder_color'    => alchemy_forms_sanitize_hex($style_in['placeholder_color'] ?? '', $d['placeholder_color']),
+            'muted_color'          => alchemy_forms_sanitize_hex($style_in['muted_color'] ?? '', $d['muted_color']),
             'radius'               => alchemy_forms_sanitize_px($style_in['radius'] ?? null, $d['radius']),
             'font'                 => (isset($style_in['font']) && in_array($style_in['font'], $font_keys, true)) ? $style_in['font'] : 'default',
             'label_color'          => alchemy_forms_sanitize_hex($style_in['label_color'] ?? '', $d['label_color']),

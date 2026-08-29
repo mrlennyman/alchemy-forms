@@ -239,6 +239,7 @@ function alchemy_forms_style_defaults() {
         'accent_color'         => '#C9A227',
         'border_color'         => '#DCE3D9',
         'placeholder_color'    => '#5B6B60',
+        'muted_color'          => '#5B6B60',
         'radius'               => 10,
         'label_color'          => '#1F2A23',
         'label_font_size'      => 14,

@@ -520,6 +520,7 @@ function alchemy_forms_resolve_style($style_settings) {
     $accent       = alchemy_forms_sanitize_hex($style_settings['accent_color'] ?? '', $d['accent_color']);
     $border       = alchemy_forms_sanitize_hex($style_settings['border_color'] ?? '', $d['border_color']);
     $placeholder  = alchemy_forms_sanitize_hex($style_settings['placeholder_color'] ?? '', $d['placeholder_color']);
+    $muted        = alchemy_forms_sanitize_hex($style_settings['muted_color'] ?? '', $d['muted_color']);
     // Forms saved under the old preset system stored a slug (e.g. 'rounded') here;
     // alchemy_forms_sanitize_px() falls back cleanly when the value isn't numeric.
     $radius       = alchemy_forms_sanitize_px($style_settings['radius'] ?? null, $d['radius']);
@@ -585,6 +586,7 @@ function alchemy_forms_resolve_style($style_settings) {
         '--wa-accent'           => $accent,
         '--wa-border'           => $border,
         '--wa-placeholder'      => $placeholder,
+        '--wa-muted'            => $muted,
         '--wa-radius'           => $radius . 'px',
         '--wa-font-display'     => $font['display'],
         '--wa-font-body'        => $font['body'],
