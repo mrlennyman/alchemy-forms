@@ -21,6 +21,7 @@ require_once ALCHEMY_FORMS_DIR . 'includes/entries.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/render.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/import.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/integrations.php';
+require_once ALCHEMY_FORMS_DIR . 'includes/settings.php';
 
 // Not on WordPress.org, so this is what gives client sites a real
 // "Update available" notice + one-click Update Now instead of needing a

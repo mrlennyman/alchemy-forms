@@ -316,9 +316,10 @@ function alchemy_forms_field_row($i, $f, $types, $icons = null, $all_fields = []
 function alchemy_forms_settings_metabox($post) {
     $settings = get_post_meta($post->ID, '_wa_form_settings', true);
     if (!is_array($settings)) $settings = [];
-    $recipients  = alchemy_forms_parse_recipients(isset($settings['recipient']) ? $settings['recipient'] : '');
-    $submit_text = isset($settings['submit_text']) ? $settings['submit_text'] : 'Submit';
-    $success_msg = isset($settings['success_msg']) ? $settings['success_msg'] : "Thanks — your submission has been received.";
+    $recipients       = alchemy_forms_parse_recipients(isset($settings['recipient']) ? $settings['recipient'] : '');
+    $submit_text      = isset($settings['submit_text']) ? $settings['submit_text'] : 'Submit';
+    $success_msg      = isset($settings['success_msg']) ? $settings['success_msg'] : "Thanks — your submission has been received.";
+    $turnstile_enabled = !empty($settings['turnstile_enabled']);
     ?>
     <p>
         <label for="wa_recipient"><strong><?php esc_html_e('Send submissions to', 'alchemy-forms'); ?></strong></label>
@@ -333,6 +334,24 @@ function alchemy_forms_settings_metabox($post) {
         <label for="wa_success_msg"><strong><?php esc_html_e('Success message', 'alchemy-forms'); ?></strong></label>
         <textarea id="wa_success_msg" name="wa_settings[success_msg]" rows="3" class="widefat"><?php echo esc_textarea($success_msg); ?></textarea>
     </p>
+    <?php if (alchemy_forms_turnstile_configured()) : ?>
+        <p>
+            <label>
+                <input type="checkbox" name="wa_settings[turnstile_enabled]" value="1" <?php checked($turnstile_enabled); ?>>
+                <?php esc_html_e('Require Cloudflare Turnstile verification', 'alchemy-forms'); ?>
+            </label>
+        </p>
+    <?php else : ?>
+        <p class="description">
+            <?php
+            printf(
+                /* translators: %s: link to the Alchemy Forms Settings page */
+                esc_html__('Set up Cloudflare Turnstile keys under %s to enable spam-challenge protection for this form.', 'alchemy-forms'),
+                '<a href="' . esc_url(admin_url('edit.php?post_type=wa_form&page=wa-form-settings')) . '">' . esc_html__('Alchemy Forms → Settings', 'alchemy-forms') . '</a>'
+            );
+            ?>
+        </p>
+    <?php endif; ?>
     <?php
 }
 
@@ -739,6 +758,7 @@ add_action('save_post_wa_form', function ($post_id) {
         $settings['recipient']   = alchemy_forms_parse_recipients(isset($s['recipient']) ? $s['recipient'] : '');
         $settings['submit_text'] = isset($s['submit_text']) && $s['submit_text'] !== '' ? sanitize_text_field($s['submit_text']) : 'Submit';
         $settings['success_msg'] = isset($s['success_msg']) ? sanitize_textarea_field($s['success_msg']) : '';
+        $settings['turnstile_enabled'] = (!empty($s['turnstile_enabled']) && alchemy_forms_turnstile_configured()) ? 1 : 0;
 
         $style_in         = (isset($s['style']) && is_array($s['style'])) ? $s['style'] : [];
         $font_keys        = array_keys(alchemy_forms_font_presets());

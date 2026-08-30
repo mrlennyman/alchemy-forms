@@ -26,6 +26,7 @@ function alchemy_forms_render_shortcode($atts) {
     $recipient   = alchemy_forms_parse_recipients(isset($settings['recipient']) ? $settings['recipient'] : '');
     $submit_text = !empty($settings['submit_text']) ? $settings['submit_text'] : __('Submit', 'alchemy-forms');
     $success_msg = !empty($settings['success_msg']) ? $settings['success_msg'] : __('Thanks — your submission has been received.', 'alchemy-forms');
+    $turnstile_active = !empty($settings['turnstile_enabled']) && alchemy_forms_turnstile_configured();
 
     // Give each field a stable input name derived from its position + label,
     // and stamp which step it belongs to (a form with no page_break fields is
@@ -79,6 +80,14 @@ function alchemy_forms_render_shortcode($atts) {
 
     alchemy_forms_enqueue_frontend_css($style['font'], $style['placeholder_font']);
 
+    if ($turnstile_active && !wp_script_is('alchemy-forms-turnstile', 'enqueued')) {
+        // render=explicit: frontend.js calls turnstile.render() itself once the
+        // API is ready, rather than relying on Cloudflare's own auto-render
+        // scan — that scan only runs once on script load, so it would miss a
+        // widget that appears later after an AJAX-swapped form re-render.
+        wp_enqueue_script('alchemy-forms-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=alchemyFormsOnTurnstileLoad&render=explicit', [], null, true);
+    }
+
     $errors            = [];
     $values            = [];
     $success           = false;
@@ -92,6 +101,8 @@ function alchemy_forms_render_shortcode($atts) {
             $errors[] = __('Your session expired — please try submitting again.', 'alchemy-forms');
         } elseif (!empty($_POST['wa_website_hp'])) {
             $success = true; // Honeypot: pretend it worked, save/send nothing.
+        } elseif ($turnstile_active && !alchemy_forms_verify_turnstile(isset($_POST['cf-turnstile-response']) ? wp_unslash($_POST['cf-turnstile-response']) : '')) {
+            $errors[] = __('Please complete the verification challenge and try again.', 'alchemy-forms');
         } else {
             $entry_data       = [];
             $values_by_uid    = []; // submitted values keyed by field uid, for the Flodesk integration below
@@ -270,6 +281,9 @@ function alchemy_forms_render_shortcode($atts) {
                     </div>
 
                     <div class="wa-form-submit-wrap">
+                        <?php if ($turnstile_active) : ?>
+                            <div class="cf-turnstile" data-sitekey="<?php echo esc_attr(get_option('alchemy_forms_turnstile_site_key', '')); ?>"></div>
+                        <?php endif; ?>
                         <button type="submit" class="wa-form-submit"><?php echo esc_html($submit_text); ?></button>
                     </div>
 
@@ -286,6 +300,9 @@ function alchemy_forms_render_shortcode($atts) {
                             <div class="wa-form-grid">
                                 <?php foreach ($step_fields as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
                             </div>
+                            <?php if ($turnstile_active && $step_index === $step_count - 1) : ?>
+                                <div class="cf-turnstile" data-sitekey="<?php echo esc_attr(get_option('alchemy_forms_turnstile_site_key', '')); ?>"></div>
+                            <?php endif; ?>
                             <div class="wa-form-step-nav">
                                 <?php if ($step_index > 0) : ?>
                                     <button type="button" class="wa-form-prev"><?php esc_html_e('Back', 'alchemy-forms'); ?></button>
@@ -750,6 +767,7 @@ function alchemy_forms_frontend_css() {
 .wa-form-errors { background: var(--wa-error-bg); border: 1px solid var(--wa-error); border-radius: var(--wa-radius); padding: 0.9rem 1.1rem; margin-bottom: 1.5rem; }
 .wa-form-errors ul { margin: 0; padding-left: 1.1rem; }
 .wa-form-errors li { color: var(--wa-error); font-size: 0.88rem; }
+.cf-turnstile { margin-bottom: 1rem; }
 .wa-form-success { background: var(--wa-surface); border: 1px solid var(--wa-border); border-left: 4px solid var(--wa-primary); border-radius: var(--wa-radius); padding: 2rem; }
 .wa-form-success h3 { font-family: var(--wa-font-display); font-size: 1.5rem; font-weight: 600; margin: 0 0 0.5rem; color: var(--wa-primary-dark); }
 .wa-form-success p { margin: 0; color: var(--wa-muted); }

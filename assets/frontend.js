@@ -1,4 +1,23 @@
 (function () {
+    /**
+     * Cloudflare's Turnstile script is loaded with render=explicit, so its own
+     * auto-render scan never runs — needed because a widget can appear after
+     * the script already loaded (an AJAX-swapped form re-render), which that
+     * one-time scan would miss. window.alchemyFormsOnTurnstileLoad is the
+     * script's onload callback (see wp_enqueue_script() in render.php); this
+     * same render pass also runs from init() on every fresh/replaced form.
+     */
+    function renderTurnstileWidgets(root) {
+        if (!window.turnstile) return;
+        (root || document).querySelectorAll('.cf-turnstile:not([data-rendered])').forEach(function (el) {
+            el.setAttribute('data-rendered', '1');
+            window.turnstile.render(el, { sitekey: el.getAttribute('data-sitekey') });
+        });
+    }
+    window.alchemyFormsOnTurnstileLoad = function () {
+        renderTurnstileWidgets(document);
+    };
+
     function getFieldValue(wrapper) {
         var checkable = wrapper.querySelectorAll('input[type=radio], input[type=checkbox]');
         if (checkable.length) {
@@ -190,6 +209,7 @@
         form.addEventListener('input', function () { refresh(form); });
         initSteps(form);
         initAjaxSubmit(form);
+        renderTurnstileWidgets(form);
     }
 
     document.addEventListener('DOMContentLoaded', function () {
