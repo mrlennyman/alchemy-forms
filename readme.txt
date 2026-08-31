@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,6 +30,10 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 2.1.0 =
+* Added AWeber integration via OAuth2 — connect once under Alchemy Forms → Settings (Client ID/Secret + a "Connect to AWeber" button), then enable it per form with its own list picker and field mapping.
+* Email Marketing is now Flodesk/AWeber tabs instead of one flat panel, now that there are two providers to keep separated.
 
 = 2.0.0 =
 * Added Cloudflare Turnstile spam-challenge integration. New global "Alchemy Forms → Settings" page holds the site key/secret key (one Turnstile site covers the whole domain); each form gets its own "Require Cloudflare Turnstile verification" checkbox once those keys are set.
