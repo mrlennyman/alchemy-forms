@@ -227,6 +227,9 @@ function alchemy_forms_render_shortcode($atts) {
                 if (!empty($settings['integrations']['flodesk']['enabled'])) {
                     alchemy_forms_send_to_flodesk($settings['integrations']['flodesk'], $values_by_uid);
                 }
+                if (!empty($settings['integrations']['aweber']['enabled'])) {
+                    alchemy_forms_send_to_aweber($settings['integrations']['aweber'], $values_by_uid);
+                }
             } elseif ($attachment_ids) {
                 // Files were uploaded and attached before a later field failed
                 // validation — don't leave any of them orphaned in the Media Library.

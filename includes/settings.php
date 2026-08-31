@@ -26,6 +26,14 @@ add_action('admin_init', function () {
         'sanitize_callback' => 'sanitize_text_field',
         'default'           => '',
     ]);
+    register_setting('alchemy_forms_settings', 'alchemy_forms_aweber_client_id', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default'           => '',
+    ]);
+    register_setting('alchemy_forms_settings', 'alchemy_forms_aweber_client_secret', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default'           => '',
+    ]);
 });
 
 function alchemy_forms_settings_page() {
@@ -35,21 +43,67 @@ function alchemy_forms_settings_page() {
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('Alchemy Forms Settings', 'alchemy-forms'); ?></h1>
+
+        <?php if (isset($_GET['aweber_connected'])) : ?>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('AWeber connected.', 'alchemy-forms'); ?></p></div>
+        <?php elseif (isset($_GET['aweber_disconnected'])) : ?>
+            <div class="notice notice-success is-dismissible"><p><?php esc_html_e('AWeber disconnected.', 'alchemy-forms'); ?></p></div>
+        <?php elseif (isset($_GET['aweber_error'])) : ?>
+            <div class="notice notice-error is-dismissible"><p><?php esc_html_e('Could not connect to AWeber — the authorization was denied, expired, or the request failed. Please try again.', 'alchemy-forms'); ?></p></div>
+        <?php endif; ?>
+
         <form method="post" action="options.php">
             <?php settings_fields('alchemy_forms_settings'); ?>
+            <h2><?php esc_html_e('Cloudflare Turnstile', 'alchemy-forms'); ?></h2>
             <table class="form-table">
                 <tr>
-                    <th scope="row"><label for="alchemy_forms_turnstile_site_key"><?php esc_html_e('Cloudflare Turnstile Site Key', 'alchemy-forms'); ?></label></th>
+                    <th scope="row"><label for="alchemy_forms_turnstile_site_key"><?php esc_html_e('Site Key', 'alchemy-forms'); ?></label></th>
                     <td><input type="text" id="alchemy_forms_turnstile_site_key" name="alchemy_forms_turnstile_site_key" value="<?php echo esc_attr(get_option('alchemy_forms_turnstile_site_key', '')); ?>" class="regular-text"></td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="alchemy_forms_turnstile_secret_key"><?php esc_html_e('Cloudflare Turnstile Secret Key', 'alchemy-forms'); ?></label></th>
+                    <th scope="row"><label for="alchemy_forms_turnstile_secret_key"><?php esc_html_e('Secret Key', 'alchemy-forms'); ?></label></th>
                     <td><input type="text" id="alchemy_forms_turnstile_secret_key" name="alchemy_forms_turnstile_secret_key" value="<?php echo esc_attr(get_option('alchemy_forms_turnstile_secret_key', '')); ?>" class="regular-text" autocomplete="off"></td>
                 </tr>
             </table>
             <p class="description"><?php esc_html_e('Get these from your Cloudflare dashboard under Turnstile. One key pair covers this whole site — turn Turnstile on for individual forms under that form\'s Settings box.', 'alchemy-forms'); ?></p>
+
+            <h2><?php esc_html_e('AWeber', 'alchemy-forms'); ?></h2>
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><label for="alchemy_forms_aweber_client_id"><?php esc_html_e('Client ID', 'alchemy-forms'); ?></label></th>
+                    <td><input type="text" id="alchemy_forms_aweber_client_id" name="alchemy_forms_aweber_client_id" value="<?php echo esc_attr(get_option('alchemy_forms_aweber_client_id', '')); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="alchemy_forms_aweber_client_secret"><?php esc_html_e('Client Secret', 'alchemy-forms'); ?></label></th>
+                    <td><input type="text" id="alchemy_forms_aweber_client_secret" name="alchemy_forms_aweber_client_secret" value="<?php echo esc_attr(get_option('alchemy_forms_aweber_client_secret', '')); ?>" class="regular-text" autocomplete="off"></td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Redirect URI', 'alchemy-forms'); ?></th>
+                    <td>
+                        <input type="text" readonly value="<?php echo esc_attr(alchemy_forms_aweber_redirect_uri()); ?>" class="regular-text" onclick="this.select();">
+                        <p class="description"><?php esc_html_e('Register this exact URL as the redirect URI on your AWeber app before connecting.', 'alchemy-forms'); ?></p>
+                    </td>
+                </tr>
+            </table>
+            <p class="description">
+                <?php esc_html_e('Create an app at AWeber\'s developer console to get a Client ID and Secret, then save this page before connecting. One connection covers this whole site — turn AWeber sync on for individual forms under that form\'s Email Marketing tab.', 'alchemy-forms'); ?>
+            </p>
             <?php submit_button(); ?>
         </form>
+
+        <?php if (alchemy_forms_aweber_client_configured()) : ?>
+            <?php if (alchemy_forms_aweber_connected()) : ?>
+                <p>
+                    <strong><?php esc_html_e('Status:', 'alchemy-forms'); ?></strong> <?php esc_html_e('Connected', 'alchemy-forms'); ?>
+                    &nbsp;
+                    <a class="button button-secondary" href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=alchemy_forms_aweber_disconnect'), 'alchemy_forms_aweber_disconnect')); ?>"><?php esc_html_e('Disconnect', 'alchemy-forms'); ?></a>
+                </p>
+            <?php else : ?>
+                <p>
+                    <a class="button button-primary" href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=alchemy_forms_aweber_connect'), 'alchemy_forms_aweber_connect')); ?>"><?php esc_html_e('Connect to AWeber', 'alchemy-forms'); ?></a>
+                </p>
+            <?php endif; ?>
+        <?php endif; ?>
     </div>
     <?php
 }

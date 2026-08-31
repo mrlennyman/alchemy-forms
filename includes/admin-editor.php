@@ -562,6 +562,33 @@ function alchemy_forms_style_metabox($post) {
 }
 
 function alchemy_forms_integrations_metabox($post) {
+    // Fields the visitor can actually fill in — same exclusion as everywhere else
+    // that offers a "pick one of this form's fields" dropdown. Shared by every
+    // provider tab below.
+    $form_fields = get_post_meta($post->ID, '_wa_form_fields', true);
+    if (!is_array($form_fields)) $form_fields = [];
+    $noninput_types = alchemy_forms_noninput_field_types();
+    $picker = [];
+    foreach ($form_fields as $f) {
+        if (empty($f['uid']) || empty($f['label'])) continue;
+        if (isset($f['type']) && in_array($f['type'], $noninput_types, true)) continue;
+        $picker[] = ['uid' => $f['uid'], 'label' => $f['label']];
+    }
+    ?>
+    <div class="wa-integration-tabs">
+        <button type="button" class="wa-integration-tab-btn wa-integration-tab-btn--active" data-tab="flodesk"><?php esc_html_e('Flodesk', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-integration-tab-btn" data-tab="aweber"><?php esc_html_e('AWeber', 'alchemy-forms'); ?></button>
+    </div>
+    <div class="wa-integration-tab-panel" data-tab-panel="flodesk">
+        <?php alchemy_forms_flodesk_tab($post, $picker); ?>
+    </div>
+    <div class="wa-integration-tab-panel" data-tab-panel="aweber" style="display:none;">
+        <?php alchemy_forms_aweber_tab($post, $picker); ?>
+    </div>
+    <?php
+}
+
+function alchemy_forms_flodesk_tab($post, $picker) {
     $settings = get_post_meta($post->ID, '_wa_form_settings', true);
     $flodesk  = (is_array($settings) && isset($settings['integrations']['flodesk']) && is_array($settings['integrations']['flodesk'])) ? $settings['integrations']['flodesk'] : [];
 
@@ -576,18 +603,6 @@ function alchemy_forms_integrations_metabox($post) {
     if (!is_array($cached_segments)) $cached_segments = [];
     $known_segment_ids = wp_list_pluck($cached_segments, 'id');
     $unlisted_segment_ids = array_diff($segment_ids, $known_segment_ids);
-
-    // Fields the visitor can actually fill in — same exclusion as everywhere else
-    // that offers a "pick one of this form's fields" dropdown.
-    $form_fields = get_post_meta($post->ID, '_wa_form_fields', true);
-    if (!is_array($form_fields)) $form_fields = [];
-    $noninput_types = alchemy_forms_noninput_field_types();
-    $picker = [];
-    foreach ($form_fields as $f) {
-        if (empty($f['uid']) || empty($f['label'])) continue;
-        if (isset($f['type']) && in_array($f['type'], $noninput_types, true)) continue;
-        $picker[] = ['uid' => $f['uid'], 'label' => $f['label']];
-    }
     ?>
     <p>
         <label>
@@ -654,6 +669,90 @@ function alchemy_forms_integrations_metabox($post) {
         <p>
             <button type="button" class="button button-secondary" id="wa-flodesk-refresh-segments"><?php esc_html_e('Refresh segments from Flodesk', 'alchemy-forms'); ?></button>
             <span id="wa-flodesk-segments-status" class="description"></span>
+        </p>
+    </div>
+    <?php
+}
+
+function alchemy_forms_aweber_tab($post, $picker) {
+    $settings = get_post_meta($post->ID, '_wa_form_settings', true);
+    $aweber   = (is_array($settings) && isset($settings['integrations']['aweber']) && is_array($settings['integrations']['aweber'])) ? $settings['integrations']['aweber'] : [];
+
+    if (!alchemy_forms_aweber_connected()) {
+        ?>
+        <p class="description">
+            <?php
+            printf(
+                /* translators: %s: link to the Alchemy Forms Settings page */
+                esc_html__('AWeber isn\'t connected yet. Connect it under %s, then come back here to enable it for this form.', 'alchemy-forms'),
+                '<a href="' . esc_url(admin_url('edit.php?post_type=wa_form&page=wa-form-settings')) . '">' . esc_html__('Alchemy Forms → Settings', 'alchemy-forms') . '</a>'
+            );
+            ?>
+        </p>
+        <?php
+        return;
+    }
+
+    $enabled     = !empty($aweber['enabled']);
+    $list_id     = isset($aweber['list_id']) ? $aweber['list_id'] : '';
+    $email_field = isset($aweber['email_field']) ? $aweber['email_field'] : '';
+    $name_field  = isset($aweber['name_field']) ? $aweber['name_field'] : '';
+
+    $cached_lists = get_transient('alchemy_forms_aweber_lists_' . $post->ID);
+    if (!is_array($cached_lists)) $cached_lists = [];
+    ?>
+    <p>
+        <label>
+            <input type="checkbox" name="wa_settings[integrations][aweber][enabled]" value="1" <?php checked($enabled); ?>>
+            <?php esc_html_e('Add subscribers to AWeber on submission', 'alchemy-forms'); ?>
+        </label>
+    </p>
+    <p>
+        <label for="wa_aweber_email_field"><?php esc_html_e('Email field', 'alchemy-forms'); ?></label>
+        <select id="wa_aweber_email_field" name="wa_settings[integrations][aweber][email_field]" class="widefat">
+            <option value=""><?php esc_html_e('— Select a field —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($email_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label for="wa_aweber_name_field"><?php esc_html_e('Name field (optional)', 'alchemy-forms'); ?></label>
+        <select id="wa_aweber_name_field" name="wa_settings[integrations][aweber][name_field]" class="widefat">
+            <option value=""><?php esc_html_e('— None —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($name_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label><?php esc_html_e('List', 'alchemy-forms'); ?></label>
+    </p>
+    <div id="wa-aweber-lists-wrap" data-post-id="<?php echo (int) $post->ID; ?>" data-nonce="<?php echo esc_attr(wp_create_nonce('alchemy_forms_aweber_lists_' . $post->ID)); ?>">
+        <div id="wa-aweber-lists-list">
+            <?php foreach ($cached_lists as $list) : ?>
+                <label class="wa-choice-option" style="display:block;">
+                    <input type="radio" name="wa_settings[integrations][aweber][list_id]" value="<?php echo esc_attr($list['id']); ?>" <?php checked($list_id, $list['id']); ?>>
+                    <?php echo esc_html($list['name']); ?>
+                    <?php if (isset($list['subscribers'])) : ?>
+                        <span class="description">(<?php echo esc_html(number_format_i18n($list['subscribers'])); ?>)</span>
+                    <?php endif; ?>
+                </label>
+            <?php endforeach; ?>
+            <?php if ($list_id !== '' && !in_array($list_id, wp_list_pluck($cached_lists, 'id'), true)) : ?>
+                <label class="wa-choice-option" style="display:block;">
+                    <input type="radio" name="wa_settings[integrations][aweber][list_id]" value="<?php echo esc_attr($list_id); ?>" checked>
+                    <?php echo esc_html($list_id); ?>
+                    <span class="description"><?php esc_html_e('(not in the last refresh — may be renamed or deleted)', 'alchemy-forms'); ?></span>
+                </label>
+            <?php endif; ?>
+            <?php if (empty($cached_lists) && $list_id === '') : ?>
+                <p class="description"><?php esc_html_e('No lists loaded yet — click Refresh to fetch them from AWeber.', 'alchemy-forms'); ?></p>
+            <?php endif; ?>
+        </div>
+        <p>
+            <button type="button" class="button button-secondary" id="wa-aweber-refresh-lists"><?php esc_html_e('Refresh lists from AWeber', 'alchemy-forms'); ?></button>
+            <span id="wa-aweber-lists-status" class="description"></span>
         </p>
     </div>
     <?php
@@ -817,6 +916,8 @@ add_action('save_post_wa_form', function ($post_id) {
             }
         }
 
+        $aweber_in = (isset($s['integrations']['aweber']) && is_array($s['integrations']['aweber'])) ? $s['integrations']['aweber'] : [];
+
         // Field pickers store a uid, not validated against known fields here (same
         // as elsewhere) — a stale uid just means the integration finds no value to
         // send at submission time, so there's nothing unsafe about leaving it as-is.
@@ -828,6 +929,12 @@ add_action('save_post_wa_form', function ($post_id) {
                 'email_field'      => isset($flodesk_in['email_field']) ? sanitize_text_field($flodesk_in['email_field']) : '',
                 'first_name_field' => isset($flodesk_in['first_name_field']) ? sanitize_text_field($flodesk_in['first_name_field']) : '',
                 'last_name_field'  => isset($flodesk_in['last_name_field']) ? sanitize_text_field($flodesk_in['last_name_field']) : '',
+            ],
+            'aweber' => [
+                'enabled'     => (!empty($aweber_in['enabled']) && alchemy_forms_aweber_connected()) ? 1 : 0,
+                'list_id'     => isset($aweber_in['list_id']) ? sanitize_text_field($aweber_in['list_id']) : '',
+                'email_field' => isset($aweber_in['email_field']) ? sanitize_text_field($aweber_in['email_field']) : '',
+                'name_field'  => isset($aweber_in['name_field']) ? sanitize_text_field($aweber_in['name_field']) : '',
             ],
         ];
     }

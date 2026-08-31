@@ -276,4 +276,56 @@ jQuery(function ($) {
             $status.text('Request failed — please try again.');
         });
     });
+
+    /* -------------------------------------------------------------------
+     * Email Marketing tabs — Flodesk / AWeber panels.
+     * ---------------------------------------------------------------- */
+    $('.wa-integration-tab-btn').on('click', function () {
+        var tab = $(this).data('tab');
+        $('.wa-integration-tab-btn').removeClass('wa-integration-tab-btn--active');
+        $(this).addClass('wa-integration-tab-btn--active');
+        $('.wa-integration-tab-panel').hide();
+        $('.wa-integration-tab-panel[data-tab-panel="' + tab + '"]').show();
+    });
+
+    /* -------------------------------------------------------------------
+     * AWeber list picker — same refresh-and-preserve-selection pattern as
+     * the Flodesk segment picker above, but single-select (radio).
+     * ---------------------------------------------------------------- */
+    $('#wa-aweber-refresh-lists').on('click', function () {
+        var $wrap   = $('#wa-aweber-lists-wrap');
+        var $list   = $('#wa-aweber-lists-list');
+        var $status = $('#wa-aweber-lists-status');
+
+        var checkedId = $list.find('input[type=radio]:checked').val();
+
+        $status.text('Loading…');
+
+        $.post(ajaxurl, {
+            action: 'alchemy_forms_fetch_aweber_lists',
+            post_id: $wrap.data('post-id'),
+            nonce: $wrap.data('nonce')
+        }).done(function (response) {
+            if (!response || !response.success || !response.data || !response.data.length) {
+                $status.text((response && response.data && typeof response.data === 'string') ? response.data : 'No lists found.');
+                return;
+            }
+
+            $list.empty();
+            response.data.forEach(function (list) {
+                var $label = $('<label class="wa-choice-option" style="display:block;"></label>');
+                var $radio = $('<input type="radio" name="wa_settings[integrations][aweber][list_id]">')
+                    .val(list.id)
+                    .prop('checked', checkedId === list.id);
+                $label.append($radio).append(document.createTextNode(' ' + list.name));
+                if (list.subscribers !== null && list.subscribers !== undefined) {
+                    $label.append($('<span class="description"></span>').text(' (' + list.subscribers + ')'));
+                }
+                $list.append($label);
+            });
+            $status.text('Updated.');
+        }).fail(function () {
+            $status.text('Request failed — please try again.');
+        });
+    });
 });

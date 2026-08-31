@@ -321,6 +321,33 @@ body.alchemy-forms-builder #wa_form_fields > .inside {
 }
 
 /* -------------------------------------------------------------------------
+ * Email Marketing tabs (Flodesk / AWeber)
+ * ---------------------------------------------------------------------- */
+.wa-integration-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid #dcdcde;
+    margin-bottom: 12px;
+}
+.wa-integration-tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 8px 6px;
+    margin-bottom: -1px;
+    cursor: pointer;
+    font-weight: 600;
+    color: #646970;
+}
+.wa-integration-tab-btn:hover {
+    color: #1d2327;
+}
+.wa-integration-tab-btn--active {
+    color: #1d2327;
+    border-bottom-color: #2271b1;
+}
+
+/* -------------------------------------------------------------------------
  * Responsive
  * ---------------------------------------------------------------------- */
 @media (max-width: 782px) {
