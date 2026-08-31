@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 * Drag-and-drop field builder: text, email, phone, URL, number, date, paragraph, dropdown, radio, checkbox, single checkbox, file upload, hidden fields, HTML content blocks, and step breaks
 * Multi-step forms with a progress bar and Back/Next navigation
 * Per-field conditional visibility and per-field placeholder text
-* Per-form styling: colors, corner radius, spacing, font pairing, button width/alignment, and container padding/border/opacity
+* Per-form styling: colors, corner radius, spacing, independent heading/body/placeholder fonts and weights (curated Google Fonts), button width/alignment, and container padding/border/opacity
 * Entries dashboard with CSV export and email notification (multiple recipients supported) on each submission
 * Optional Flodesk integration — sync submissions to an audience via API key, with field mapping and segment assignment
 * One-click import from a Ninja Forms `.nff` export
@@ -30,6 +30,10 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 2.3.0 =
+* Replaced the single "Font pairing" preset with independent Heading font, Body font, and Placeholder font pickers — each a dropdown of ~30 curated Google Fonts (plus two no-load system-font options) with its own font weight (Light through Extrabold). Forms saved under the old preset system keep rendering exactly as before until next edited and saved.
+* The Style panel has a new "Typography" tab holding all of the above, moved out of the Colors tab.
 
 = 2.2.0 =
 * The Style panel is now tabbed (Colors/Label/Inputs/Button/Steps/Container) instead of one long scroll with section headers, matching the Email Marketing tabs.

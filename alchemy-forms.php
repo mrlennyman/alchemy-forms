@@ -3,7 +3,7 @@
  * Plugin Name: Alchemy Forms
  * Plugin URI:  https://websitealchemy.com
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     2.2.0
+ * Version:     2.3.0
  * Author:      Website Alchemy
  * Author URI:  https://websitealchemy.com
  * License:     GPL-2.0-or-later
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('ALCHEMY_FORMS_VERSION', '2.2.0');
+define('ALCHEMY_FORMS_VERSION', '2.3.0');
 define('ALCHEMY_FORMS_DIR', plugin_dir_path(__FILE__));
 define('ALCHEMY_FORMS_URL', plugin_dir_url(__FILE__));
 
@@ -140,7 +140,10 @@ function alchemy_forms_hidden_sources() {
 }
 
 /**
- * Available font-pairing presets for the Style panel.
+ * Legacy font-pairing presets — no longer shown in the Style panel (replaced
+ * by independent Heading/Body/Placeholder font pickers), kept only so a form
+ * saved before that change still resolves to something sensible. See
+ * alchemy_forms_legacy_font_migration().
  */
 function alchemy_forms_font_presets() {
     return [
@@ -168,6 +171,85 @@ function alchemy_forms_font_presets() {
             'body'    => "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             'google'  => null,
         ],
+    ];
+}
+
+/**
+ * Maps an old style.font preset key to the new independent heading/body
+ * font+weight settings it's equivalent to, for a form saved before this
+ * changed — read once by alchemy_forms_resolve_style() when the new keys
+ * aren't present yet, so existing forms don't silently change appearance.
+ */
+function alchemy_forms_legacy_font_migration($legacy_key) {
+    $map = [
+        'default' => ['heading_font' => 'Fraunces', 'heading_weight' => 600, 'body_font' => 'Inter', 'body_weight' => 400],
+        'classic' => ['heading_font' => '__system_serif__', 'heading_weight' => 400, 'body_font' => '__system_sans__', 'body_weight' => 400],
+        'modern'  => ['heading_font' => 'Poppins', 'heading_weight' => 600, 'body_font' => 'Roboto', 'body_weight' => 400],
+        'system'  => ['heading_font' => '__system_sans__', 'heading_weight' => 600, 'body_font' => '__system_sans__', 'body_weight' => 400],
+    ];
+    return isset($map[$legacy_key]) ? $map[$legacy_key] : $map['default'];
+}
+
+/**
+ * Curated Google Fonts list for the Heading/Body/Placeholder font pickers —
+ * deliberately not the full ~1500-font catalog, which would need a
+ * searchable field instead of a plain dropdown. Two "__system_*__" entries
+ * cover the no-web-font-load case (system-ui/Georgia stacks); everything
+ * else loads from Google Fonts at whichever weight is chosen alongside it.
+ */
+function alchemy_forms_google_fonts() {
+    return [
+        '__system_sans__'  => ['label' => __('System sans-serif (no font loading)', 'alchemy-forms'), 'family' => "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", 'google' => false],
+        '__system_serif__' => ['label' => __('System serif (no font loading)', 'alchemy-forms'), 'family' => "Georgia, 'Times New Roman', serif", 'google' => false],
+        'Arial'             => ['label' => 'Arial', 'family' => "Arial, Helvetica, sans-serif", 'google' => false],
+        'Fraunces'          => ['label' => 'Fraunces', 'family' => "'Fraunces', Georgia, serif", 'google' => true],
+        'Playfair Display'  => ['label' => 'Playfair Display', 'family' => "'Playfair Display', Georgia, serif", 'google' => true],
+        'Merriweather'      => ['label' => 'Merriweather', 'family' => "'Merriweather', Georgia, serif", 'google' => true],
+        'Lora'              => ['label' => 'Lora', 'family' => "'Lora', Georgia, serif", 'google' => true],
+        'Libre Baskerville' => ['label' => 'Libre Baskerville', 'family' => "'Libre Baskerville', Georgia, serif", 'google' => true],
+        'Cormorant'         => ['label' => 'Cormorant', 'family' => "'Cormorant', Georgia, serif", 'google' => true],
+        'Crimson Text'      => ['label' => 'Crimson Text', 'family' => "'Crimson Text', Georgia, serif", 'google' => true],
+        'PT Serif'          => ['label' => 'PT Serif', 'family' => "'PT Serif', Georgia, serif", 'google' => true],
+        'Bitter'            => ['label' => 'Bitter', 'family' => "'Bitter', Georgia, serif", 'google' => true],
+        'Prata'             => ['label' => 'Prata', 'family' => "'Prata', Georgia, serif", 'google' => true],
+        'Zilla Slab'        => ['label' => 'Zilla Slab', 'family' => "'Zilla Slab', Georgia, serif", 'google' => true],
+        'Inter'             => ['label' => 'Inter', 'family' => "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", 'google' => true],
+        'Roboto'            => ['label' => 'Roboto', 'family' => "'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", 'google' => true],
+        'Open Sans'         => ['label' => 'Open Sans', 'family' => "'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", 'google' => true],
+        'Lato'              => ['label' => 'Lato', 'family' => "'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", 'google' => true],
+        'Poppins'           => ['label' => 'Poppins', 'family' => "'Poppins', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Montserrat'        => ['label' => 'Montserrat', 'family' => "'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Raleway'           => ['label' => 'Raleway', 'family' => "'Raleway', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Nunito'            => ['label' => 'Nunito', 'family' => "'Nunito', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Quicksand'         => ['label' => 'Quicksand', 'family' => "'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Work Sans'         => ['label' => 'Work Sans', 'family' => "'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Source Sans 3'     => ['label' => 'Source Sans 3', 'family' => "'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'DM Sans'           => ['label' => 'DM Sans', 'family' => "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Manrope'           => ['label' => 'Manrope', 'family' => "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Rubik'             => ['label' => 'Rubik', 'family' => "'Rubik', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Cabin'             => ['label' => 'Cabin', 'family' => "'Cabin', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Karla'             => ['label' => 'Karla', 'family' => "'Karla', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Barlow'            => ['label' => 'Barlow', 'family' => "'Barlow', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Josefin Sans'      => ['label' => 'Josefin Sans', 'family' => "'Josefin Sans', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Space Grotesk'     => ['label' => 'Space Grotesk', 'family' => "'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Oswald'            => ['label' => 'Oswald', 'family' => "'Oswald', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+    ];
+}
+
+/**
+ * Font weights offered for each Heading/Body/Placeholder font picker. Not
+ * every Google Fonts family technically ships every one of these, but the
+ * CSS2 API snaps to the closest weight it actually has rather than erroring,
+ * so a uniform list keeps this simple without per-font weight validation.
+ */
+function alchemy_forms_font_weight_options() {
+    return [
+        300 => __('Light (300)', 'alchemy-forms'),
+        400 => __('Regular (400)', 'alchemy-forms'),
+        500 => __('Medium (500)', 'alchemy-forms'),
+        600 => __('Semibold (600)', 'alchemy-forms'),
+        700 => __('Bold (700)', 'alchemy-forms'),
+        800 => __('Extrabold (800)', 'alchemy-forms'),
     ];
 }
 
@@ -243,6 +325,10 @@ function alchemy_forms_style_defaults() {
         'placeholder_color'    => '#5B6B60',
         'muted_color'          => '#5B6B60',
         'radius'               => 10,
+        'heading_font'         => 'Fraunces',
+        'heading_weight'       => 600,
+        'body_font'            => 'Inter',
+        'body_weight'          => 400,
         'label_color'          => '#1F2A23',
         'label_font_size'      => 14,
         'field_gap'            => 20,
@@ -257,6 +343,7 @@ function alchemy_forms_style_defaults() {
         'button_align'         => 'left',
         'button_spacing'       => 28,
         'placeholder_font'       => 'inherit',
+        'placeholder_weight'     => 400,
         'placeholder_font_style' => 'normal',
         'step_color'           => '#2F4F3E',
         'container_bg_color'   => '#FFFFFF',
@@ -283,16 +370,13 @@ function alchemy_forms_placeholder_font_style_options() {
 
 /**
  * Placeholder font-family options — "inherit" (default) uses whatever the
- * form's own Font pairing already sets for body text; anything else picks a
- * different preset's body font for placeholder text only, independent of
- * what real input text uses. Reuses the same curated presets as Font
- * pairing rather than free-text entry, so there's no risk of an invalid or
- * unloaded font name.
+ * Body font setting already is; anything else picks a different curated
+ * Google Font for placeholder text only, independent of real input text.
  */
 function alchemy_forms_placeholder_font_options() {
     $options = ['inherit' => __('Match body font', 'alchemy-forms')];
-    foreach (alchemy_forms_font_presets() as $key => $preset) {
-        $options[$key] = $preset['label'];
+    foreach (alchemy_forms_google_fonts() as $key => $font) {
+        $options[$key] = $font['label'];
     }
     return $options;
 }
