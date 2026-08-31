@@ -397,7 +397,16 @@ function alchemy_forms_style_metabox($post) {
     $shadow_opacity     = alchemy_forms_sanitize_px($style['shadow_opacity'] ?? null, $d['shadow_opacity'], 0, 100);
     $shadow_blur        = alchemy_forms_sanitize_px($style['shadow_blur'] ?? null, $d['shadow_blur'], 0, 100);
     ?>
-    <h4><?php esc_html_e('Colors', 'alchemy-forms'); ?></h4>
+    <div class="wa-tabs">
+        <button type="button" class="wa-tab-btn wa-tab-btn--active" data-tab="colors"><?php esc_html_e('Colors', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="label"><?php esc_html_e('Label', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="inputs"><?php esc_html_e('Inputs', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="button"><?php esc_html_e('Button', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="steps"><?php esc_html_e('Steps', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="container"><?php esc_html_e('Container', 'alchemy-forms'); ?></button>
+    </div>
+
+    <div class="wa-tab-panel" data-tab-panel="colors">
     <p>
         <label for="wa_style_primary"><?php esc_html_e('Primary color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_primary" class="wa-color-field" name="wa_settings[style][primary_color]" value="<?php echo esc_attr($primary); ?>">
@@ -449,7 +458,9 @@ function alchemy_forms_style_metabox($post) {
         </select>
     </p>
 
-    <h4><?php esc_html_e('Label', 'alchemy-forms'); ?></h4>
+    </div>
+
+    <div class="wa-tab-panel" data-tab-panel="label" style="display:none;">
     <p>
         <label for="wa_style_label_color"><?php esc_html_e('Text color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_label_color" class="wa-color-field" name="wa_settings[style][label_color]" value="<?php echo esc_attr($label_color); ?>">
@@ -459,7 +470,9 @@ function alchemy_forms_style_metabox($post) {
         <input type="number" id="wa_style_label_font_size" class="small-text" name="wa_settings[style][label_font_size]" value="<?php echo esc_attr($label_font_size); ?>" min="0" max="999" step="1">
     </p>
 
-    <h4><?php esc_html_e('Inputs', 'alchemy-forms'); ?></h4>
+    </div>
+
+    <div class="wa-tab-panel" data-tab-panel="inputs" style="display:none;">
     <p>
         <label for="wa_style_field_gap"><?php esc_html_e('Gap between fields (px)', 'alchemy-forms'); ?></label><br>
         <input type="number" id="wa_style_field_gap" class="small-text" name="wa_settings[style][field_gap]" value="<?php echo esc_attr($field_gap); ?>" min="0" max="999" step="1">
@@ -473,7 +486,9 @@ function alchemy_forms_style_metabox($post) {
         <input type="text" id="wa_style_input_bg" class="wa-color-field" name="wa_settings[style][input_bg_color]" value="<?php echo esc_attr($input_bg); ?>">
     </p>
 
-    <h4><?php esc_html_e('Button', 'alchemy-forms'); ?></h4>
+    </div>
+
+    <div class="wa-tab-panel" data-tab-panel="button" style="display:none;">
     <p>
         <label for="wa_style_button_bg"><?php esc_html_e('Background color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_button_bg" class="wa-color-field" name="wa_settings[style][button_bg_color]" value="<?php echo esc_attr($button_bg); ?>">
@@ -515,14 +530,18 @@ function alchemy_forms_style_metabox($post) {
         <input type="number" id="wa_style_button_spacing" class="small-text" name="wa_settings[style][button_spacing]" value="<?php echo esc_attr($button_spacing); ?>" min="0" max="200" step="1">
     </p>
 
-    <h4><?php esc_html_e('Steps', 'alchemy-forms'); ?></h4>
+    </div>
+
+    <div class="wa-tab-panel" data-tab-panel="steps" style="display:none;">
     <p>
         <label for="wa_style_step_color"><?php esc_html_e('Step indicator color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_step_color" class="wa-color-field" name="wa_settings[style][step_color]" value="<?php echo esc_attr($step_color); ?>">
         <span class="description"><?php esc_html_e('Used for the progress bar and step titles on multi-step forms.', 'alchemy-forms'); ?></span>
     </p>
 
-    <h4><?php esc_html_e('Container', 'alchemy-forms'); ?></h4>
+    </div>
+
+    <div class="wa-tab-panel" data-tab-panel="container" style="display:none;">
     <p>
         <label for="wa_style_container_bg"><?php esc_html_e('Background color', 'alchemy-forms'); ?></label><br>
         <input type="text" id="wa_style_container_bg" class="wa-color-field" name="wa_settings[style][container_bg_color]" value="<?php echo esc_attr($container_bg); ?>">
@@ -558,6 +577,7 @@ function alchemy_forms_style_metabox($post) {
         <label for="wa_style_shadow_blur"><?php esc_html_e('Shadow blur (px)', 'alchemy-forms'); ?></label><br>
         <input type="number" id="wa_style_shadow_blur" class="small-text" name="wa_settings[style][shadow_blur]" value="<?php echo esc_attr($shadow_blur); ?>" min="0" max="100" step="1">
     </p>
+    </div>
     <?php
 }
 
@@ -575,14 +595,14 @@ function alchemy_forms_integrations_metabox($post) {
         $picker[] = ['uid' => $f['uid'], 'label' => $f['label']];
     }
     ?>
-    <div class="wa-integration-tabs">
-        <button type="button" class="wa-integration-tab-btn wa-integration-tab-btn--active" data-tab="flodesk"><?php esc_html_e('Flodesk', 'alchemy-forms'); ?></button>
-        <button type="button" class="wa-integration-tab-btn" data-tab="aweber"><?php esc_html_e('AWeber', 'alchemy-forms'); ?></button>
+    <div class="wa-tabs">
+        <button type="button" class="wa-tab-btn wa-tab-btn--active" data-tab="flodesk"><?php esc_html_e('Flodesk', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="aweber"><?php esc_html_e('AWeber', 'alchemy-forms'); ?></button>
     </div>
-    <div class="wa-integration-tab-panel" data-tab-panel="flodesk">
+    <div class="wa-tab-panel" data-tab-panel="flodesk">
         <?php alchemy_forms_flodesk_tab($post, $picker); ?>
     </div>
-    <div class="wa-integration-tab-panel" data-tab-panel="aweber" style="display:none;">
+    <div class="wa-tab-panel" data-tab-panel="aweber" style="display:none;">
         <?php alchemy_forms_aweber_tab($post, $picker); ?>
     </div>
     <?php

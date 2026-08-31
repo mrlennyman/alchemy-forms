@@ -321,15 +321,18 @@ body.alchemy-forms-builder #wa_form_fields > .inside {
 }
 
 /* -------------------------------------------------------------------------
- * Email Marketing tabs (Flodesk / AWeber)
+ * Generic metabox tabs — used by both the Email Marketing box
+ * (Flodesk/AWeber) and the Style box (Colors/Label/Inputs/Button/Steps/
+ * Container). Reusable anywhere a metabox has more than one natural section.
  * ---------------------------------------------------------------------- */
-.wa-integration-tabs {
+.wa-tabs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     border-bottom: 1px solid #dcdcde;
     margin-bottom: 12px;
 }
-.wa-integration-tab-btn {
+.wa-tab-btn {
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
@@ -339,10 +342,10 @@ body.alchemy-forms-builder #wa_form_fields > .inside {
     font-weight: 600;
     color: #646970;
 }
-.wa-integration-tab-btn:hover {
+.wa-tab-btn:hover {
     color: #1d2327;
 }
-.wa-integration-tab-btn--active {
+.wa-tab-btn--active {
     color: #1d2327;
     border-bottom-color: #2271b1;
 }

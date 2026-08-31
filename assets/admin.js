@@ -278,14 +278,18 @@ jQuery(function ($) {
     });
 
     /* -------------------------------------------------------------------
-     * Email Marketing tabs — Flodesk / AWeber panels.
+     * Generic metabox tabs — Email Marketing (Flodesk/AWeber) and Style
+     * (Colors/Label/Inputs/Button/Steps/Container) both use this. Scoped to
+     * the clicked button's own .wa-tabs group and its sibling panels, so
+     * multiple independent tab groups on the same screen don't interfere.
      * ---------------------------------------------------------------- */
-    $('.wa-integration-tab-btn').on('click', function () {
-        var tab = $(this).data('tab');
-        $('.wa-integration-tab-btn').removeClass('wa-integration-tab-btn--active');
-        $(this).addClass('wa-integration-tab-btn--active');
-        $('.wa-integration-tab-panel').hide();
-        $('.wa-integration-tab-panel[data-tab-panel="' + tab + '"]').show();
+    $('.wa-tab-btn').on('click', function () {
+        var tab   = $(this).data('tab');
+        var $tabs = $(this).closest('.wa-tabs');
+        $tabs.find('.wa-tab-btn').removeClass('wa-tab-btn--active');
+        $(this).addClass('wa-tab-btn--active');
+        $tabs.siblings('.wa-tab-panel').hide();
+        $tabs.siblings('.wa-tab-panel[data-tab-panel="' + tab + '"]').show();
     });
 
     /* -------------------------------------------------------------------
