@@ -8,6 +8,18 @@ body.alchemy-forms-builder #post-body.columns-2 #post-body-content {
     margin-right: 0;
     width: 100%;
 }
+/* Some admin themes / other plugins cap .wrap (or #poststuff) at a fixed
+   max-width for readability on normal post types — bust that here so the
+   builder itself decides how to use the available width. */
+body.alchemy-forms-builder .wrap,
+body.alchemy-forms-builder #poststuff,
+body.alchemy-forms-builder #post-body.columns-2,
+body.alchemy-forms-builder #wa_form_fields,
+body.alchemy-forms-builder #wa_form_fields > .inside {
+    max-width: none;
+    width: 100%;
+    box-sizing: border-box;
+}
 body.alchemy-forms-builder .wrap > h1.wp-heading-inline,
 body.alchemy-forms-builder .wrap > hr.wp-header-end {
     display: none;
@@ -117,7 +129,7 @@ body.alchemy-forms-builder #wa_form_fields > .inside {
     margin: 0;
 }
 .wa-style-panel {
-    flex: 0 0 280px;
+    flex: 0 0 340px;
     border-left: 1px solid #dcdcde;
     padding: 16px;
     box-sizing: border-box;
@@ -299,7 +311,7 @@ body.alchemy-forms-builder #wa_form_fields > .inside {
  * column next to the Style panel, always visible alongside the canvas.
  * ---------------------------------------------------------------------- */
 .wa-sidebar-panel {
-    flex: 0 0 280px;
+    flex: 0 0 340px;
     border-left: 1px solid #dcdcde;
     background: #f0f0f1;
     padding: 16px;

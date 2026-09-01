@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.3.0
+Stable tag: 2.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,6 +30,10 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 2.3.1 =
+* The builder screen now busts any admin-theme/plugin max-width it inherits so it always uses the full browser width, instead of leaving empty space on the right on wide screens.
+* Widened the Style and sidebar (Publish/Settings/Email Marketing/Usage) columns from 280px to 340px so tabs wrap less and dropdowns/color pickers have more room.
 
 = 2.3.0 =
 * Replaced the single "Font pairing" preset with independent Heading font, Body font, and Placeholder font pickers — each a dropdown of ~30 curated Google Fonts (plus two no-load system-font options) with its own font weight (Light through Extrabold). Forms saved under the old preset system keep rendering exactly as before until next edited and saved.
