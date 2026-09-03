@@ -634,12 +634,16 @@ function alchemy_forms_integrations_metabox($post) {
     <div class="wa-tabs">
         <button type="button" class="wa-tab-btn wa-tab-btn--active" data-tab="flodesk"><?php esc_html_e('Flodesk', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="aweber"><?php esc_html_e('AWeber', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="mailchimp"><?php esc_html_e('Mailchimp', 'alchemy-forms'); ?></button>
     </div>
     <div class="wa-tab-panel" data-tab-panel="flodesk">
         <?php alchemy_forms_flodesk_tab($post, $picker); ?>
     </div>
     <div class="wa-tab-panel" data-tab-panel="aweber" style="display:none;">
         <?php alchemy_forms_aweber_tab($post, $picker); ?>
+    </div>
+    <div class="wa-tab-panel" data-tab-panel="mailchimp" style="display:none;">
+        <?php alchemy_forms_mailchimp_tab($post, $picker); ?>
     </div>
     <?php
 }
@@ -809,6 +813,91 @@ function alchemy_forms_aweber_tab($post, $picker) {
         <p>
             <button type="button" class="button button-secondary" id="wa-aweber-refresh-lists"><?php esc_html_e('Refresh lists from AWeber', 'alchemy-forms'); ?></button>
             <span id="wa-aweber-lists-status" class="description"></span>
+        </p>
+    </div>
+    <?php
+}
+
+function alchemy_forms_mailchimp_tab($post, $picker) {
+    $settings  = get_post_meta($post->ID, '_wa_form_settings', true);
+    $mailchimp = (is_array($settings) && isset($settings['integrations']['mailchimp']) && is_array($settings['integrations']['mailchimp'])) ? $settings['integrations']['mailchimp'] : [];
+
+    $enabled     = !empty($mailchimp['enabled']);
+    $api_key     = isset($mailchimp['api_key']) ? $mailchimp['api_key'] : '';
+    $list_id     = isset($mailchimp['list_id']) ? $mailchimp['list_id'] : '';
+    $email_field = isset($mailchimp['email_field']) ? $mailchimp['email_field'] : '';
+    $first_field = isset($mailchimp['first_name_field']) ? $mailchimp['first_name_field'] : '';
+    $last_field  = isset($mailchimp['last_name_field']) ? $mailchimp['last_name_field'] : '';
+
+    $cached_lists = get_transient('alchemy_forms_mailchimp_lists_' . $post->ID);
+    if (!is_array($cached_lists)) $cached_lists = [];
+    ?>
+    <p>
+        <label>
+            <input type="checkbox" name="wa_settings[integrations][mailchimp][enabled]" value="1" <?php checked($enabled); ?>>
+            <?php esc_html_e('Add subscribers to Mailchimp on submission', 'alchemy-forms'); ?>
+        </label>
+    </p>
+    <p>
+        <label for="wa_mailchimp_api_key"><?php esc_html_e('API key', 'alchemy-forms'); ?></label>
+        <input type="text" id="wa_mailchimp_api_key" name="wa_settings[integrations][mailchimp][api_key]" value="<?php echo esc_attr($api_key); ?>" class="widefat" autocomplete="off">
+        <span class="description"><?php esc_html_e('From Mailchimp → Account → Extras → API keys.', 'alchemy-forms'); ?></span>
+    </p>
+    <p>
+        <label for="wa_mailchimp_email_field"><?php esc_html_e('Email field', 'alchemy-forms'); ?></label>
+        <select id="wa_mailchimp_email_field" name="wa_settings[integrations][mailchimp][email_field]" class="widefat">
+            <option value=""><?php esc_html_e('— Select a field —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($email_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label for="wa_mailchimp_first_name_field"><?php esc_html_e('First name field (optional)', 'alchemy-forms'); ?></label>
+        <select id="wa_mailchimp_first_name_field" name="wa_settings[integrations][mailchimp][first_name_field]" class="widefat">
+            <option value=""><?php esc_html_e('— None —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($first_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label for="wa_mailchimp_last_name_field"><?php esc_html_e('Last name field (optional)', 'alchemy-forms'); ?></label>
+        <select id="wa_mailchimp_last_name_field" name="wa_settings[integrations][mailchimp][last_name_field]" class="widefat">
+            <option value=""><?php esc_html_e('— None —', 'alchemy-forms'); ?></option>
+            <?php foreach ($picker as $p) : ?>
+                <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($last_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
+    <p>
+        <label><?php esc_html_e('Audience', 'alchemy-forms'); ?></label>
+    </p>
+    <div id="wa-mailchimp-lists-wrap" data-post-id="<?php echo (int) $post->ID; ?>" data-nonce="<?php echo esc_attr(wp_create_nonce('alchemy_forms_mailchimp_lists_' . $post->ID)); ?>">
+        <div id="wa-mailchimp-lists-list">
+            <?php foreach ($cached_lists as $list) : ?>
+                <label class="wa-choice-option" style="display:block;">
+                    <input type="radio" name="wa_settings[integrations][mailchimp][list_id]" value="<?php echo esc_attr($list['id']); ?>" <?php checked($list_id, $list['id']); ?>>
+                    <?php echo esc_html($list['name']); ?>
+                    <?php if (isset($list['subscribers'])) : ?>
+                        <span class="description">(<?php echo esc_html(number_format_i18n($list['subscribers'])); ?>)</span>
+                    <?php endif; ?>
+                </label>
+            <?php endforeach; ?>
+            <?php if ($list_id !== '' && !in_array($list_id, wp_list_pluck($cached_lists, 'id'), true)) : ?>
+                <label class="wa-choice-option" style="display:block;">
+                    <input type="radio" name="wa_settings[integrations][mailchimp][list_id]" value="<?php echo esc_attr($list_id); ?>" checked>
+                    <?php echo esc_html($list_id); ?>
+                    <span class="description"><?php esc_html_e('(not in the last refresh — may be renamed or deleted)', 'alchemy-forms'); ?></span>
+                </label>
+            <?php endif; ?>
+            <?php if (empty($cached_lists) && $list_id === '') : ?>
+                <p class="description"><?php esc_html_e('No audiences loaded yet — click Refresh to fetch them from Mailchimp.', 'alchemy-forms'); ?></p>
+            <?php endif; ?>
+        </div>
+        <p>
+            <button type="button" class="button button-secondary" id="wa-mailchimp-refresh-lists"><?php esc_html_e('Refresh audiences from Mailchimp', 'alchemy-forms'); ?></button>
+            <span id="wa-mailchimp-lists-status" class="description"></span>
         </p>
     </div>
     <?php
@@ -1009,7 +1098,8 @@ add_action('save_post_wa_form', function ($post_id) {
             }
         }
 
-        $aweber_in = (isset($s['integrations']['aweber']) && is_array($s['integrations']['aweber'])) ? $s['integrations']['aweber'] : [];
+        $aweber_in    = (isset($s['integrations']['aweber']) && is_array($s['integrations']['aweber'])) ? $s['integrations']['aweber'] : [];
+        $mailchimp_in = (isset($s['integrations']['mailchimp']) && is_array($s['integrations']['mailchimp'])) ? $s['integrations']['mailchimp'] : [];
 
         // Field pickers store a uid, not validated against known fields here (same
         // as elsewhere) — a stale uid just means the integration finds no value to
@@ -1028,6 +1118,14 @@ add_action('save_post_wa_form', function ($post_id) {
                 'list_id'     => isset($aweber_in['list_id']) ? sanitize_text_field($aweber_in['list_id']) : '',
                 'email_field' => isset($aweber_in['email_field']) ? sanitize_text_field($aweber_in['email_field']) : '',
                 'name_field'  => isset($aweber_in['name_field']) ? sanitize_text_field($aweber_in['name_field']) : '',
+            ],
+            'mailchimp' => [
+                'enabled'          => !empty($mailchimp_in['enabled']) ? 1 : 0,
+                'api_key'          => isset($mailchimp_in['api_key']) ? sanitize_text_field($mailchimp_in['api_key']) : '',
+                'list_id'          => isset($mailchimp_in['list_id']) ? sanitize_text_field($mailchimp_in['list_id']) : '',
+                'email_field'      => isset($mailchimp_in['email_field']) ? sanitize_text_field($mailchimp_in['email_field']) : '',
+                'first_name_field' => isset($mailchimp_in['first_name_field']) ? sanitize_text_field($mailchimp_in['first_name_field']) : '',
+                'last_name_field'  => isset($mailchimp_in['last_name_field']) ? sanitize_text_field($mailchimp_in['last_name_field']) : '',
             ],
         ];
     }

@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.4.0
+Stable tag: 2.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,8 +20,9 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 * Multi-step forms with a progress bar and Back/Next navigation
 * Per-field conditional visibility and per-field placeholder text
 * Per-form styling: the Style panel is organized by component (Title/Label/Inputs/Placeholder/Button/Steps/Container), each with its own colors and, where it renders text, its own independent font, weight, and size (curated Google Fonts)
-* Entries dashboard with CSV export and email notification (multiple recipients supported) on each submission
-* Optional Flodesk integration — sync submissions to an audience via API key, with field mapping and segment assignment
+* Entries dashboard with CSV export and email notification (any number of recipients supported) on each submission
+* Optional email marketing sync on submission — Flodesk, AWeber, or Mailchimp, with field mapping and audience/list/segment assignment
+* Optional Cloudflare Turnstile spam-challenge verification, configured once for the whole site
 * One-click import from a Ninja Forms `.nff` export
 * Spam honeypot and nonce-verified submissions
 
@@ -30,6 +31,9 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 2.5.0 =
+* Added a Mailchimp integration — a third Email Marketing tab alongside Flodesk and AWeber. Connect with an API key, pick an audience, map email/first/last name fields.
 
 = 2.4.0 =
 * The Style panel is redesigned around 7 component tabs — Title, Label, Inputs, Placeholder, Button, Steps, Container — and every tab now owns its own color(s) plus, where it renders text, its own independent Google Font, weight, and font size. Nothing is shared across tabs any more (previously Primary/Border/Muted colors and the Heading/Body fonts applied to several components at once, which made it unclear what a given setting actually affected).

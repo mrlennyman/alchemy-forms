@@ -332,4 +332,48 @@ jQuery(function ($) {
             $status.text('Request failed — please try again.');
         });
     });
+
+    /* -------------------------------------------------------------------
+     * Mailchimp audience picker — same refresh-and-preserve-selection
+     * pattern as AWeber's list picker above (single-select radio), but
+     * keyed off the API key field like the Flodesk segment picker.
+     * ---------------------------------------------------------------- */
+    $('#wa-mailchimp-refresh-lists').on('click', function () {
+        var $wrap   = $('#wa-mailchimp-lists-wrap');
+        var $list   = $('#wa-mailchimp-lists-list');
+        var $status = $('#wa-mailchimp-lists-status');
+        var apiKey  = $('#wa_mailchimp_api_key').val();
+
+        var checkedId = $list.find('input[type=radio]:checked').val();
+
+        $status.text('Loading…');
+
+        $.post(ajaxurl, {
+            action: 'alchemy_forms_fetch_mailchimp_lists',
+            post_id: $wrap.data('post-id'),
+            nonce: $wrap.data('nonce'),
+            api_key: apiKey
+        }).done(function (response) {
+            if (!response || !response.success || !response.data || !response.data.length) {
+                $status.text((response && response.data && typeof response.data === 'string') ? response.data : 'No audiences found.');
+                return;
+            }
+
+            $list.empty();
+            response.data.forEach(function (list) {
+                var $label = $('<label class="wa-choice-option" style="display:block;"></label>');
+                var $radio = $('<input type="radio" name="wa_settings[integrations][mailchimp][list_id]">')
+                    .val(list.id)
+                    .prop('checked', checkedId === list.id);
+                $label.append($radio).append(document.createTextNode(' ' + list.name));
+                if (list.subscribers !== null && list.subscribers !== undefined) {
+                    $label.append($('<span class="description"></span>').text(' (' + list.subscribers + ')'));
+                }
+                $list.append($label);
+            });
+            $status.text('Updated.');
+        }).fail(function () {
+            $status.text('Request failed — please try again.');
+        });
+    });
 });
