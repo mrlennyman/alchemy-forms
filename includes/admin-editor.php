@@ -355,276 +355,264 @@ function alchemy_forms_settings_metabox($post) {
     <?php
 }
 
+/**
+ * Small render helpers for the Style metabox tabs — every tab is built from
+ * the same handful of field shapes (color / font / weight / number select),
+ * so these keep ~50 fields from turning into 50 copies of the same markup.
+ */
+function alchemy_forms_style_field_color($id, $key, $value, $label, $description = '') {
+    ?>
+    <p>
+        <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></label><br>
+        <input type="text" id="<?php echo esc_attr($id); ?>" class="wa-color-field" name="wa_settings[style][<?php echo esc_attr($key); ?>]" value="<?php echo esc_attr($value); ?>">
+        <?php if ($description) : ?><span class="description"><?php echo esc_html($description); ?></span><?php endif; ?>
+    </p>
+    <?php
+}
+function alchemy_forms_style_field_number($id, $key, $value, $label, $min = 0, $max = 999, $description = '') {
+    ?>
+    <p>
+        <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></label><br>
+        <input type="number" id="<?php echo esc_attr($id); ?>" class="small-text" name="wa_settings[style][<?php echo esc_attr($key); ?>]" value="<?php echo esc_attr($value); ?>" min="<?php echo esc_attr($min); ?>" max="<?php echo esc_attr($max); ?>" step="1">
+        <?php if ($description) : ?><span class="description"><?php echo esc_html($description); ?></span><?php endif; ?>
+    </p>
+    <?php
+}
+function alchemy_forms_style_field_select($id, $key, $value, $options, $label, $description = '') {
+    ?>
+    <p>
+        <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></label>
+        <select id="<?php echo esc_attr($id); ?>" name="wa_settings[style][<?php echo esc_attr($key); ?>]" class="widefat">
+            <?php foreach ($options as $opt_key => $opt_label) : ?>
+                <option value="<?php echo esc_attr($opt_key); ?>" <?php selected($value, $opt_key); ?>><?php echo esc_html($opt_label); ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php if ($description) : ?><span class="description"><?php echo esc_html($description); ?></span><?php endif; ?>
+    </p>
+    <?php
+}
+/** A font-family + weight pair, the recurring building block of every tab's Typography section. */
+function alchemy_forms_style_field_typography($prefix, $font_key, $font_value, $weight_key, $weight_value, $font_opts, $weight_opts, $font_label, $description = '') {
+    alchemy_forms_style_field_select('wa_style_' . $prefix . '_font', $font_key, $font_value, $font_opts, $font_label, $description);
+    alchemy_forms_style_field_select('wa_style_' . $prefix . '_weight', $weight_key, $weight_value, $weight_opts, __('Weight', 'alchemy-forms'));
+}
+
 function alchemy_forms_style_metabox($post) {
     $settings = get_post_meta($post->ID, '_wa_form_settings', true);
     $style    = (is_array($settings) && isset($settings['style']) && is_array($settings['style'])) ? $settings['style'] : [];
 
-    $d = alchemy_forms_style_defaults();
+    $d            = alchemy_forms_style_defaults();
+    $google_fonts = alchemy_forms_google_fonts();
+    $font_opts    = wp_list_pluck($google_fonts, 'label');
+    $weight_opts  = alchemy_forms_font_weight_options();
 
-    $primary            = alchemy_forms_sanitize_hex($style['primary_color'] ?? '', $d['primary_color']);
-    $accent             = alchemy_forms_sanitize_hex($style['accent_color'] ?? '', $d['accent_color']);
-    $border             = alchemy_forms_sanitize_hex($style['border_color'] ?? '', $d['border_color']);
-    $placeholder        = alchemy_forms_sanitize_hex($style['placeholder_color'] ?? '', $d['placeholder_color']);
-    $muted              = alchemy_forms_sanitize_hex($style['muted_color'] ?? '', $d['muted_color']);
-    $radius             = alchemy_forms_sanitize_px($style['radius'] ?? null, $d['radius']);
-    $google_fonts       = alchemy_forms_google_fonts();
-    $weight_opts        = alchemy_forms_font_weight_options();
-    $legacy_font        = !empty($style['font']) ? $style['font'] : null;
-    $legacy             = alchemy_forms_legacy_font_migration($legacy_font ?: 'default');
-    $heading_font       = (isset($style['heading_font']) && array_key_exists($style['heading_font'], $google_fonts)) ? $style['heading_font'] : ($legacy_font ? $legacy['heading_font'] : $d['heading_font']);
-    $heading_weight     = (isset($style['heading_weight']) && array_key_exists((int) $style['heading_weight'], $weight_opts)) ? (int) $style['heading_weight'] : ($legacy_font ? $legacy['heading_weight'] : $d['heading_weight']);
-    $body_font          = (isset($style['body_font']) && array_key_exists($style['body_font'], $google_fonts)) ? $style['body_font'] : ($legacy_font ? $legacy['body_font'] : $d['body_font']);
-    $body_weight        = (isset($style['body_weight']) && array_key_exists((int) $style['body_weight'], $weight_opts)) ? (int) $style['body_weight'] : ($legacy_font ? $legacy['body_weight'] : $d['body_weight']);
-    $label_color        = alchemy_forms_sanitize_hex($style['label_color'] ?? '', $d['label_color']);
-    $label_font_size    = alchemy_forms_sanitize_px($style['label_font_size'] ?? null, $d['label_font_size']);
-    $field_gap          = alchemy_forms_sanitize_px($style['field_gap'] ?? null, $d['field_gap']);
-    $input_padding      = alchemy_forms_sanitize_px($style['input_padding'] ?? null, $d['input_padding']);
-    $input_bg           = alchemy_forms_sanitize_hex($style['input_bg_color'] ?? '', $d['input_bg_color']);
-    $button_bg          = alchemy_forms_sanitize_hex($style['button_bg_color'] ?? '', $d['button_bg_color']);
-    $button_hover       = alchemy_forms_sanitize_hex($style['button_hover_color'] ?? '', $d['button_hover_color']);
-    $button_text        = alchemy_forms_sanitize_hex($style['button_text_color'] ?? '', $d['button_text_color']);
-    $button_padding     = alchemy_forms_sanitize_px($style['button_padding'] ?? null, $d['button_padding']);
-    $button_font_size   = alchemy_forms_sanitize_px($style['button_font_size'] ?? null, $d['button_font_size']);
-    $button_width_opts  = alchemy_forms_button_width_options();
-    $button_align_opts  = alchemy_forms_button_align_options();
-    $button_width       = (isset($style['button_width']) && array_key_exists($style['button_width'], $button_width_opts)) ? $style['button_width'] : $d['button_width'];
-    $button_align       = (isset($style['button_align']) && array_key_exists($style['button_align'], $button_align_opts)) ? $style['button_align'] : $d['button_align'];
-    $button_spacing     = alchemy_forms_sanitize_px($style['button_spacing'] ?? null, $d['button_spacing']);
+    // A legacy pre-2.4.0 form only has the old global heading/body font
+    // keys (themselves possibly migrated further back from the original
+    // "Font pairing" preset) — resolve those once so every per-component
+    // font/weight field below can fall back to them.
+    $legacy_font_key    = !empty($style['font']) ? $style['font'] : null;
+    $legacy_preset      = alchemy_forms_legacy_font_migration($legacy_font_key ?: 'default');
+    $legacy_heading_font   = $legacy_font_key ? $legacy_preset['heading_font'] : $d['heading_font'];
+    $legacy_heading_weight = $legacy_font_key ? $legacy_preset['heading_weight'] : $d['heading_weight'];
+    $legacy_body_font      = $legacy_font_key ? $legacy_preset['body_font'] : $d['body_font'];
+    $legacy_body_weight    = $legacy_font_key ? $legacy_preset['body_weight'] : $d['body_weight'];
+    if (isset($style['heading_font'])) $legacy_heading_font = $style['heading_font'];
+    if (isset($style['heading_weight'])) $legacy_heading_weight = (int) $style['heading_weight'];
+    if (isset($style['body_font'])) $legacy_body_font = $style['body_font'];
+    if (isset($style['body_weight'])) $legacy_body_weight = (int) $style['body_weight'];
+    $ld = $d; // a defaults array patched with the resolved legacy values, used only as the fallback source below
+    $ld['title_font'] = $ld['step_font'] = $ld['success_heading_font'] = $legacy_heading_font;
+    $ld['title_weight'] = $ld['step_weight'] = $ld['success_heading_weight'] = $legacy_heading_weight;
+    $ld['label_font'] = $ld['input_font'] = $ld['button_font'] = $ld['success_text_font'] = $legacy_body_font;
+    $ld['label_weight'] = $ld['input_weight'] = $ld['button_weight'] = $ld['success_text_weight'] = $legacy_body_weight;
+    // The old design always computed the title/success-heading color as the
+    // legacy Primary color darkened by 22% — never stored separately — so
+    // that's the fallback default here, not the new field's own default.
+    $legacy_primary_dark = alchemy_forms_darken_hex(alchemy_forms_resolve_style_color($style, 'primary_color', $d), 0.22);
+    $ld['title_color'] = $ld['success_heading_color'] = $legacy_primary_dark;
+
+    $title_color      = alchemy_forms_resolve_style_color($style, 'title_color', $ld);
+    $title_font       = alchemy_forms_resolve_style_font($style, 'title_font', $ld, $google_fonts);
+    $title_weight     = alchemy_forms_resolve_style_weight($style, 'title_weight', $ld, $weight_opts);
+    $title_font_size  = alchemy_forms_resolve_style_px($style, 'title_font_size', $d);
+
+    $label_color        = alchemy_forms_resolve_style_color($style, 'label_color', $d);
+    $label_font         = alchemy_forms_resolve_style_font($style, 'label_font', $ld, $google_fonts);
+    $label_weight       = alchemy_forms_resolve_style_weight($style, 'label_weight', $ld, $weight_opts);
+    $label_font_size    = alchemy_forms_resolve_style_px($style, 'label_font_size', $d);
+    $label_required     = alchemy_forms_resolve_style_color($style, 'label_required_color', $d, 'accent_color');
+
+    $input_border    = alchemy_forms_resolve_style_color($style, 'input_border_color', $d, 'border_color');
+    $input_bg        = alchemy_forms_resolve_style_color($style, 'input_bg_color', $d);
+    $input_text      = alchemy_forms_resolve_style_color($style, 'input_text_color', $d);
+    $input_focus     = alchemy_forms_resolve_style_color($style, 'input_focus_color', $d, 'primary_color');
+    $input_font      = alchemy_forms_resolve_style_font($style, 'input_font', $ld, $google_fonts);
+    $input_weight    = alchemy_forms_resolve_style_weight($style, 'input_weight', $ld, $weight_opts);
+    $input_font_size = alchemy_forms_resolve_style_px($style, 'input_font_size', $d);
+    $input_padding   = alchemy_forms_resolve_style_px($style, 'input_padding', $d);
+    $field_gap       = alchemy_forms_resolve_style_px($style, 'field_gap', $d);
+    $input_hint      = alchemy_forms_resolve_style_color($style, 'input_hint_color', $d, 'muted_color');
+
     $placeholder_style_opts = alchemy_forms_placeholder_font_style_options();
-    $placeholder_font_style = (isset($style['placeholder_font_style']) && array_key_exists($style['placeholder_font_style'], $placeholder_style_opts)) ? $style['placeholder_font_style'] : $d['placeholder_font_style'];
     $placeholder_font_opts  = alchemy_forms_placeholder_font_options();
-    $placeholder_font       = (isset($style['placeholder_font']) && array_key_exists($style['placeholder_font'], $placeholder_font_opts)) ? $style['placeholder_font'] : $d['placeholder_font'];
-    $placeholder_weight     = (isset($style['placeholder_weight']) && array_key_exists((int) $style['placeholder_weight'], $weight_opts)) ? (int) $style['placeholder_weight'] : $d['placeholder_weight'];
-    $step_color         = alchemy_forms_sanitize_hex($style['step_color'] ?? '', $d['step_color']);
-    $container_bg       = alchemy_forms_sanitize_hex($style['container_bg_color'] ?? '', $d['container_bg_color']);
-    $container_opacity  = alchemy_forms_sanitize_px($style['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
-    $container_padding  = alchemy_forms_sanitize_px($style['container_padding'] ?? null, $d['container_padding']);
-    $container_border_w = alchemy_forms_sanitize_px($style['container_border_width'] ?? null, $d['container_border_width'], 0, 50);
-    $shadow_enabled     = isset($style['shadow_enabled']) ? !empty($style['shadow_enabled']) : !empty($d['shadow_enabled']);
-    $shadow_color       = alchemy_forms_sanitize_hex($style['shadow_color'] ?? '', $d['shadow_color']);
-    $shadow_opacity     = alchemy_forms_sanitize_px($style['shadow_opacity'] ?? null, $d['shadow_opacity'], 0, 100);
-    $shadow_blur        = alchemy_forms_sanitize_px($style['shadow_blur'] ?? null, $d['shadow_blur'], 0, 100);
+    $placeholder_color      = alchemy_forms_resolve_style_color($style, 'placeholder_color', $d);
+    $placeholder_font       = alchemy_forms_resolve_style_choice($style, 'placeholder_font', $d, array_keys($placeholder_font_opts));
+    $placeholder_weight     = alchemy_forms_resolve_style_weight($style, 'placeholder_weight', $d, $weight_opts);
+    $placeholder_font_size  = alchemy_forms_resolve_style_px($style, 'placeholder_font_size', $d);
+    $placeholder_font_style = alchemy_forms_resolve_style_choice($style, 'placeholder_font_style', $d, array_keys($placeholder_style_opts));
+
+    $button_bg          = alchemy_forms_resolve_style_color($style, 'button_bg_color', $d);
+    $button_hover        = alchemy_forms_resolve_style_color($style, 'button_hover_color', $d);
+    $button_text         = alchemy_forms_resolve_style_color($style, 'button_text_color', $d);
+    $button_font         = alchemy_forms_resolve_style_font($style, 'button_font', $ld, $google_fonts);
+    $button_weight       = alchemy_forms_resolve_style_weight($style, 'button_weight', $ld, $weight_opts);
+    $button_font_size    = alchemy_forms_resolve_style_px($style, 'button_font_size', $d);
+    $button_padding      = alchemy_forms_resolve_style_px($style, 'button_padding', $d);
+    $button_width_opts   = alchemy_forms_button_width_options();
+    $button_align_opts   = alchemy_forms_button_align_options();
+    $button_width        = alchemy_forms_resolve_style_choice($style, 'button_width', $d, array_keys($button_width_opts));
+    $button_align        = alchemy_forms_resolve_style_choice($style, 'button_align', $d, array_keys($button_align_opts));
+    $button_spacing      = alchemy_forms_resolve_style_px($style, 'button_spacing', $d, 0, 200);
+
+    $step_color       = alchemy_forms_resolve_style_color($style, 'step_color', $d);
+    $step_font        = alchemy_forms_resolve_style_font($style, 'step_font', $ld, $google_fonts);
+    $step_weight      = alchemy_forms_resolve_style_weight($style, 'step_weight', $ld, $weight_opts);
+    $step_font_size   = alchemy_forms_resolve_style_px($style, 'step_font_size', $d);
+    $step_label_color = alchemy_forms_resolve_style_color($style, 'step_label_color', $d, 'muted_color');
+
+    $radius              = alchemy_forms_resolve_style_px($style, 'radius', $d);
+    $container_bg        = alchemy_forms_resolve_style_color($style, 'container_bg_color', $d);
+    $container_opacity   = alchemy_forms_resolve_style_px($style, 'container_bg_opacity', $d, 0, 100);
+    $container_border    = alchemy_forms_resolve_style_color($style, 'container_border_color', $d, 'border_color');
+    $container_border_w  = alchemy_forms_resolve_style_px($style, 'container_border_width', $d, 0, 50);
+    $container_padding   = alchemy_forms_resolve_style_px($style, 'container_padding', $d);
+    $shadow_enabled       = isset($style['shadow_enabled']) ? !empty($style['shadow_enabled']) : !empty($d['shadow_enabled']);
+    $shadow_color         = alchemy_forms_resolve_style_color($style, 'shadow_color', $d);
+    $shadow_opacity       = alchemy_forms_resolve_style_px($style, 'shadow_opacity', $d, 0, 100);
+    $shadow_blur          = alchemy_forms_resolve_style_px($style, 'shadow_blur', $d, 0, 100);
+    $success_heading_color     = alchemy_forms_resolve_style_color($style, 'success_heading_color', $ld);
+    $success_heading_font      = alchemy_forms_resolve_style_font($style, 'success_heading_font', $ld, $google_fonts);
+    $success_heading_weight    = alchemy_forms_resolve_style_weight($style, 'success_heading_weight', $ld, $weight_opts);
+    $success_heading_font_size = alchemy_forms_resolve_style_px($style, 'success_heading_font_size', $d);
+    $success_text_color        = alchemy_forms_resolve_style_color($style, 'success_text_color', $d, 'muted_color');
+    $success_text_font         = alchemy_forms_resolve_style_font($style, 'success_text_font', $ld, $google_fonts);
+    $success_text_weight       = alchemy_forms_resolve_style_weight($style, 'success_text_weight', $ld, $weight_opts);
+    $success_text_font_size    = alchemy_forms_resolve_style_px($style, 'success_text_font_size', $d);
     ?>
     <div class="wa-tabs">
-        <button type="button" class="wa-tab-btn wa-tab-btn--active" data-tab="colors"><?php esc_html_e('Colors', 'alchemy-forms'); ?></button>
-        <button type="button" class="wa-tab-btn" data-tab="typography"><?php esc_html_e('Typography', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn wa-tab-btn--active" data-tab="title"><?php esc_html_e('Title', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="label"><?php esc_html_e('Label', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="inputs"><?php esc_html_e('Inputs', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="placeholder"><?php esc_html_e('Placeholder', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="button"><?php esc_html_e('Button', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="steps"><?php esc_html_e('Steps', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="container"><?php esc_html_e('Container', 'alchemy-forms'); ?></button>
     </div>
 
-    <div class="wa-tab-panel" data-tab-panel="colors">
-    <p>
-        <label for="wa_style_primary"><?php esc_html_e('Primary color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_primary" class="wa-color-field" name="wa_settings[style][primary_color]" value="<?php echo esc_attr($primary); ?>">
-    </p>
-    <p>
-        <label for="wa_style_accent"><?php esc_html_e('Accent color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_accent" class="wa-color-field" name="wa_settings[style][accent_color]" value="<?php echo esc_attr($accent); ?>">
-    </p>
-    <p>
-        <label for="wa_style_border"><?php esc_html_e('Border color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_border" class="wa-color-field" name="wa_settings[style][border_color]" value="<?php echo esc_attr($border); ?>">
-    </p>
-    <p>
-        <label for="wa_style_placeholder"><?php esc_html_e('Placeholder text color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_placeholder" class="wa-color-field" name="wa_settings[style][placeholder_color]" value="<?php echo esc_attr($placeholder); ?>">
-    </p>
-    <p>
-        <label for="wa_style_muted"><?php esc_html_e('Secondary text color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_muted" class="wa-color-field" name="wa_settings[style][muted_color]" value="<?php echo esc_attr($muted); ?>">
-        <span class="description"><?php esc_html_e('Used for the "Step X of Y" label, file upload hints, the success message text, and the Back button hover border.', 'alchemy-forms'); ?></span>
-    </p>
-    <p>
-        <label for="wa_style_radius"><?php esc_html_e('Corner radius (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_radius" class="small-text" name="wa_settings[style][radius]" value="<?php echo esc_attr($radius); ?>" min="0" max="999" step="1">
-    </p>
-
-    </div>
-
-    <div class="wa-tab-panel" data-tab-panel="typography" style="display:none;">
-    <p>
-        <label for="wa_style_heading_font"><?php esc_html_e('Heading font', 'alchemy-forms'); ?></label>
-        <select id="wa_style_heading_font" name="wa_settings[style][heading_font]" class="widefat">
-            <?php foreach ($google_fonts as $key => $gf) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($heading_font, $key); ?>><?php echo esc_html($gf['label']); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <span class="description"><?php esc_html_e('Used for the form title and step titles.', 'alchemy-forms'); ?></span>
-    </p>
-    <p>
-        <label for="wa_style_heading_weight"><?php esc_html_e('Heading weight', 'alchemy-forms'); ?></label>
-        <select id="wa_style_heading_weight" name="wa_settings[style][heading_weight]" class="widefat">
-            <?php foreach ($weight_opts as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($heading_weight, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-    </p>
-    <p>
-        <label for="wa_style_body_font"><?php esc_html_e('Body font', 'alchemy-forms'); ?></label>
-        <select id="wa_style_body_font" name="wa_settings[style][body_font]" class="widefat">
-            <?php foreach ($google_fonts as $key => $gf) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($body_font, $key); ?>><?php echo esc_html($gf['label']); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <span class="description"><?php esc_html_e('Used for labels, input text, and the button.', 'alchemy-forms'); ?></span>
-    </p>
-    <p>
-        <label for="wa_style_body_weight"><?php esc_html_e('Body weight', 'alchemy-forms'); ?></label>
-        <select id="wa_style_body_weight" name="wa_settings[style][body_weight]" class="widefat">
-            <?php foreach ($weight_opts as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($body_weight, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <span class="description"><?php esc_html_e('Applies to input text. Labels and the button keep their own fixed weight.', 'alchemy-forms'); ?></span>
-    </p>
-    <p>
-        <label for="wa_style_placeholder_font"><?php esc_html_e('Placeholder font', 'alchemy-forms'); ?></label>
-        <select id="wa_style_placeholder_font" name="wa_settings[style][placeholder_font]" class="widefat">
-            <?php foreach ($placeholder_font_opts as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($placeholder_font, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-        <span class="description"><?php esc_html_e('Independent of the Body font above.', 'alchemy-forms'); ?></span>
-    </p>
-    <p>
-        <label for="wa_style_placeholder_weight"><?php esc_html_e('Placeholder weight', 'alchemy-forms'); ?></label>
-        <select id="wa_style_placeholder_weight" name="wa_settings[style][placeholder_weight]" class="widefat">
-            <?php foreach ($weight_opts as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($placeholder_weight, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-    </p>
-    <p>
-        <label for="wa_style_placeholder_font_style"><?php esc_html_e('Placeholder text style', 'alchemy-forms'); ?></label>
-        <select id="wa_style_placeholder_font_style" name="wa_settings[style][placeholder_font_style]" class="widefat">
-            <?php foreach ($placeholder_style_opts as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($placeholder_font_style, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-    </p>
-
+    <div class="wa-tab-panel" data-tab-panel="title">
+        <?php
+        alchemy_forms_style_field_color('wa_style_title_color', 'title_color', $title_color, __('Color', 'alchemy-forms'));
+        alchemy_forms_style_field_typography('title', 'title_font', $title_font, 'title_weight', $title_weight, $font_opts, $weight_opts, __('Font', 'alchemy-forms'), __('The main heading shown at the top of the form.', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_title_font_size', 'title_font_size', $title_font_size, __('Font size (px)', 'alchemy-forms'));
+        ?>
     </div>
 
     <div class="wa-tab-panel" data-tab-panel="label" style="display:none;">
-    <p>
-        <label for="wa_style_label_color"><?php esc_html_e('Text color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_label_color" class="wa-color-field" name="wa_settings[style][label_color]" value="<?php echo esc_attr($label_color); ?>">
-    </p>
-    <p>
-        <label for="wa_style_label_font_size"><?php esc_html_e('Font size (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_label_font_size" class="small-text" name="wa_settings[style][label_font_size]" value="<?php echo esc_attr($label_font_size); ?>" min="0" max="999" step="1">
-    </p>
-
+        <?php
+        alchemy_forms_style_field_color('wa_style_label_color', 'label_color', $label_color, __('Color', 'alchemy-forms'));
+        alchemy_forms_style_field_typography('label', 'label_font', $label_font, 'label_weight', $label_weight, $font_opts, $weight_opts, __('Font', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_label_font_size', 'label_font_size', $label_font_size, __('Font size (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_label_required', 'label_required_color', $label_required, __('Required marker color', 'alchemy-forms'), __('The asterisk shown next to a required field\'s label.', 'alchemy-forms'));
+        ?>
     </div>
 
     <div class="wa-tab-panel" data-tab-panel="inputs" style="display:none;">
-    <p>
-        <label for="wa_style_field_gap"><?php esc_html_e('Gap between fields (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_field_gap" class="small-text" name="wa_settings[style][field_gap]" value="<?php echo esc_attr($field_gap); ?>" min="0" max="999" step="1">
-    </p>
-    <p>
-        <label for="wa_style_input_padding"><?php esc_html_e('Padding (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_input_padding" class="small-text" name="wa_settings[style][input_padding]" value="<?php echo esc_attr($input_padding); ?>" min="0" max="999" step="1">
-    </p>
-    <p>
-        <label for="wa_style_input_bg"><?php esc_html_e('Background color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_input_bg" class="wa-color-field" name="wa_settings[style][input_bg_color]" value="<?php echo esc_attr($input_bg); ?>">
-    </p>
+        <?php
+        alchemy_forms_style_field_color('wa_style_input_border', 'input_border_color', $input_border, __('Border color', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_input_bg', 'input_bg_color', $input_bg, __('Background color', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_input_text', 'input_text_color', $input_text, __('Text color', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_input_focus', 'input_focus_color', $input_focus, __('Focus color', 'alchemy-forms'), __('Used for the focus outline, the file-upload "Browse" button, and radio/checkbox controls.', 'alchemy-forms'));
+        alchemy_forms_style_field_typography('input', 'input_font', $input_font, 'input_weight', $input_weight, $font_opts, $weight_opts, __('Font', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_input_font_size', 'input_font_size', $input_font_size, __('Font size (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_input_padding', 'input_padding', $input_padding, __('Padding (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_field_gap', 'field_gap', $field_gap, __('Gap between fields (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_input_hint', 'input_hint_color', $input_hint, __('File upload hint color', 'alchemy-forms'), __('The filename text and helper hint under a file upload field.', 'alchemy-forms'));
+        ?>
+    </div>
 
+    <div class="wa-tab-panel" data-tab-panel="placeholder" style="display:none;">
+        <?php
+        alchemy_forms_style_field_color('wa_style_placeholder_color', 'placeholder_color', $placeholder_color, __('Color', 'alchemy-forms'));
+        alchemy_forms_style_field_select('wa_style_placeholder_font', 'placeholder_font', $placeholder_font, $placeholder_font_opts, __('Font', 'alchemy-forms'), __('Independent of the Inputs tab\'s font, which sets the font for real input text.', 'alchemy-forms'));
+        alchemy_forms_style_field_select('wa_style_placeholder_weight', 'placeholder_weight', $placeholder_weight, $weight_opts, __('Weight', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_placeholder_font_size', 'placeholder_font_size', $placeholder_font_size, __('Font size (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_select('wa_style_placeholder_font_style', 'placeholder_font_style', $placeholder_font_style, $placeholder_style_opts, __('Text style', 'alchemy-forms'));
+        ?>
     </div>
 
     <div class="wa-tab-panel" data-tab-panel="button" style="display:none;">
-    <p>
-        <label for="wa_style_button_bg"><?php esc_html_e('Background color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_button_bg" class="wa-color-field" name="wa_settings[style][button_bg_color]" value="<?php echo esc_attr($button_bg); ?>">
-    </p>
-    <p>
-        <label for="wa_style_button_hover"><?php esc_html_e('Hover color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_button_hover" class="wa-color-field" name="wa_settings[style][button_hover_color]" value="<?php echo esc_attr($button_hover); ?>">
-    </p>
-    <p>
-        <label for="wa_style_button_text"><?php esc_html_e('Text color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_button_text" class="wa-color-field" name="wa_settings[style][button_text_color]" value="<?php echo esc_attr($button_text); ?>">
-    </p>
-    <p>
-        <label for="wa_style_button_padding"><?php esc_html_e('Padding (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_button_padding" class="small-text" name="wa_settings[style][button_padding]" value="<?php echo esc_attr($button_padding); ?>" min="0" max="999" step="1">
-    </p>
-    <p>
-        <label for="wa_style_button_font_size"><?php esc_html_e('Font size (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_button_font_size" class="small-text" name="wa_settings[style][button_font_size]" value="<?php echo esc_attr($button_font_size); ?>" min="0" max="999" step="1">
-    </p>
-    <p>
-        <label for="wa_style_button_width"><?php esc_html_e('Width', 'alchemy-forms'); ?></label>
-        <select id="wa_style_button_width" name="wa_settings[style][button_width]" class="widefat">
-            <?php foreach ($button_width_opts as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($button_width, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-    </p>
-    <p>
-        <label for="wa_style_button_align"><?php esc_html_e('Alignment (when Auto width)', 'alchemy-forms'); ?></label>
-        <select id="wa_style_button_align" name="wa_settings[style][button_align]" class="widefat">
-            <?php foreach ($button_align_opts as $key => $label) : ?>
-                <option value="<?php echo esc_attr($key); ?>" <?php selected($button_align, $key); ?>><?php echo esc_html($label); ?></option>
-            <?php endforeach; ?>
-        </select>
-    </p>
-    <p>
-        <label for="wa_style_button_spacing"><?php esc_html_e('Space above button (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_button_spacing" class="small-text" name="wa_settings[style][button_spacing]" value="<?php echo esc_attr($button_spacing); ?>" min="0" max="200" step="1">
-    </p>
-
+        <?php
+        alchemy_forms_style_field_color('wa_style_button_bg', 'button_bg_color', $button_bg, __('Background color', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_button_hover', 'button_hover_color', $button_hover, __('Hover color', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_button_text', 'button_text_color', $button_text, __('Text color', 'alchemy-forms'));
+        alchemy_forms_style_field_typography('button', 'button_font', $button_font, 'button_weight', $button_weight, $font_opts, $weight_opts, __('Font', 'alchemy-forms'), __('Also used for the multi-step Back/Next buttons, which always match.', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_button_font_size', 'button_font_size', $button_font_size, __('Font size (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_button_padding', 'button_padding', $button_padding, __('Padding (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_select('wa_style_button_width', 'button_width', $button_width, $button_width_opts, __('Width', 'alchemy-forms'));
+        alchemy_forms_style_field_select('wa_style_button_align', 'button_align', $button_align, $button_align_opts, __('Alignment (when Auto width)', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_button_spacing', 'button_spacing', $button_spacing, __('Space above button (px)', 'alchemy-forms'), 0, 200);
+        ?>
     </div>
 
     <div class="wa-tab-panel" data-tab-panel="steps" style="display:none;">
-    <p>
-        <label for="wa_style_step_color"><?php esc_html_e('Step indicator color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_step_color" class="wa-color-field" name="wa_settings[style][step_color]" value="<?php echo esc_attr($step_color); ?>">
-        <span class="description"><?php esc_html_e('Used for the progress bar and step titles on multi-step forms.', 'alchemy-forms'); ?></span>
-    </p>
-
+        <?php
+        alchemy_forms_style_field_color('wa_style_step_color', 'step_color', $step_color, __('Indicator color', 'alchemy-forms'), __('Used for the progress bar and step titles on multi-step forms.', 'alchemy-forms'));
+        alchemy_forms_style_field_typography('step', 'step_font', $step_font, 'step_weight', $step_weight, $font_opts, $weight_opts, __('Step title font', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_step_font_size', 'step_font_size', $step_font_size, __('Step title font size (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_step_label', 'step_label_color', $step_label_color, __('"Step X of Y" label color', 'alchemy-forms'));
+        ?>
     </div>
 
     <div class="wa-tab-panel" data-tab-panel="container" style="display:none;">
-    <p>
-        <label for="wa_style_container_bg"><?php esc_html_e('Background color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_container_bg" class="wa-color-field" name="wa_settings[style][container_bg_color]" value="<?php echo esc_attr($container_bg); ?>">
-    </p>
-    <p>
-        <label for="wa_style_container_opacity"><?php esc_html_e('Background opacity', 'alchemy-forms'); ?> (<span id="wa_style_container_opacity_val"><?php echo esc_html($container_opacity); ?></span>%)</label><br>
-        <input type="range" id="wa_style_container_opacity" name="wa_settings[style][container_bg_opacity]" value="<?php echo esc_attr($container_opacity); ?>" min="0" max="100" step="1">
-    </p>
-    <p>
-        <label for="wa_style_container_padding"><?php esc_html_e('Padding (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_container_padding" class="small-text" name="wa_settings[style][container_padding]" value="<?php echo esc_attr($container_padding); ?>" min="0" max="999" step="1">
-    </p>
-    <p>
-        <label for="wa_style_container_border_width"><?php esc_html_e('Border width (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_container_border_width" class="small-text" name="wa_settings[style][container_border_width]" value="<?php echo esc_attr($container_border_w); ?>" min="0" max="50" step="1">
-        <span class="description"><?php esc_html_e('Uses the Border color above. Set to 0 to remove.', 'alchemy-forms'); ?></span>
-    </p>
-    <p>
-        <label>
-            <input type="checkbox" name="wa_settings[style][shadow_enabled]" value="1" <?php checked($shadow_enabled); ?>>
-            <?php esc_html_e('Drop shadow', 'alchemy-forms'); ?>
-        </label>
-    </p>
-    <p>
-        <label for="wa_style_shadow_color"><?php esc_html_e('Shadow color', 'alchemy-forms'); ?></label><br>
-        <input type="text" id="wa_style_shadow_color" class="wa-color-field" name="wa_settings[style][shadow_color]" value="<?php echo esc_attr($shadow_color); ?>">
-    </p>
-    <p>
-        <label for="wa_style_shadow_opacity"><?php esc_html_e('Shadow opacity', 'alchemy-forms'); ?> (<span id="wa_style_shadow_opacity_val"><?php echo esc_html($shadow_opacity); ?></span>%)</label><br>
-        <input type="range" id="wa_style_shadow_opacity" name="wa_settings[style][shadow_opacity]" value="<?php echo esc_attr($shadow_opacity); ?>" min="0" max="100" step="1">
-    </p>
-    <p>
-        <label for="wa_style_shadow_blur"><?php esc_html_e('Shadow blur (px)', 'alchemy-forms'); ?></label><br>
-        <input type="number" id="wa_style_shadow_blur" class="small-text" name="wa_settings[style][shadow_blur]" value="<?php echo esc_attr($shadow_blur); ?>" min="0" max="100" step="1">
-    </p>
+        <?php
+        alchemy_forms_style_field_number('wa_style_radius', 'radius', $radius, __('Corner radius (px)', 'alchemy-forms'), 0, 999, __('Also rounds inputs, buttons, and the file upload box.', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_container_bg', 'container_bg_color', $container_bg, __('Background color', 'alchemy-forms'));
+        ?>
+        <p>
+            <label for="wa_style_container_opacity"><?php esc_html_e('Background opacity', 'alchemy-forms'); ?> (<span id="wa_style_container_opacity_val"><?php echo esc_html($container_opacity); ?></span>%)</label><br>
+            <input type="range" id="wa_style_container_opacity" name="wa_settings[style][container_bg_opacity]" value="<?php echo esc_attr($container_opacity); ?>" min="0" max="100" step="1">
+        </p>
+        <?php
+        alchemy_forms_style_field_color('wa_style_container_border', 'container_border_color', $container_border, __('Border color', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_container_border_width', 'container_border_width', $container_border_w, __('Border width (px)', 'alchemy-forms'), 0, 50, __('Set to 0 to remove.', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_container_padding', 'container_padding', $container_padding, __('Padding (px)', 'alchemy-forms'));
+        ?>
+        <p>
+            <label>
+                <input type="checkbox" name="wa_settings[style][shadow_enabled]" value="1" <?php checked($shadow_enabled); ?>>
+                <?php esc_html_e('Drop shadow', 'alchemy-forms'); ?>
+            </label>
+        </p>
+        <?php
+        alchemy_forms_style_field_color('wa_style_shadow_color', 'shadow_color', $shadow_color, __('Shadow color', 'alchemy-forms'));
+        ?>
+        <p>
+            <label for="wa_style_shadow_opacity"><?php esc_html_e('Shadow opacity', 'alchemy-forms'); ?> (<span id="wa_style_shadow_opacity_val"><?php echo esc_html($shadow_opacity); ?></span>%)</label><br>
+            <input type="range" id="wa_style_shadow_opacity" name="wa_settings[style][shadow_opacity]" value="<?php echo esc_attr($shadow_opacity); ?>" min="0" max="100" step="1">
+        </p>
+        <?php
+        alchemy_forms_style_field_number('wa_style_shadow_blur', 'shadow_blur', $shadow_blur, __('Shadow blur (px)', 'alchemy-forms'), 0, 100);
+        ?>
+        <h4 style="margin-top:24px;"><?php esc_html_e('Success message', 'alchemy-forms'); ?></h4>
+        <p class="description" style="margin-top:-8px;"><?php esc_html_e('Shown inside the container in place of the form after a successful submission.', 'alchemy-forms'); ?></p>
+        <?php
+        alchemy_forms_style_field_color('wa_style_success_heading_color', 'success_heading_color', $success_heading_color, __('Heading color', 'alchemy-forms'));
+        alchemy_forms_style_field_typography('success_heading', 'success_heading_font', $success_heading_font, 'success_heading_weight', $success_heading_weight, $font_opts, $weight_opts, __('Heading font', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_success_heading_font_size', 'success_heading_font_size', $success_heading_font_size, __('Heading font size (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_success_text_color', 'success_text_color', $success_text_color, __('Text color', 'alchemy-forms'));
+        alchemy_forms_style_field_typography('success_text', 'success_text_font', $success_text_font, 'success_text_weight', $success_text_weight, $font_opts, $weight_opts, __('Text font', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_success_text_font_size', 'success_text_font_size', $success_text_font_size, __('Text font size (px)', 'alchemy-forms'));
+        ?>
     </div>
     <?php
 }
@@ -927,51 +915,83 @@ add_action('save_post_wa_form', function ($post_id) {
         $settings['success_msg'] = isset($s['success_msg']) ? sanitize_textarea_field($s['success_msg']) : '';
         $settings['turnstile_enabled'] = (!empty($s['turnstile_enabled']) && alchemy_forms_turnstile_configured()) ? 1 : 0;
 
-        $style_in         = (isset($s['style']) && is_array($s['style'])) ? $s['style'] : [];
-        $google_font_keys = array_keys(alchemy_forms_google_fonts());
-        $weight_keys      = array_keys(alchemy_forms_font_weight_options());
-        $button_width_keys = array_keys(alchemy_forms_button_width_options());
-        $button_align_keys = array_keys(alchemy_forms_button_align_options());
-        $placeholder_style_keys = array_keys(alchemy_forms_placeholder_font_style_options());
-        $placeholder_font_keys  = array_keys(alchemy_forms_placeholder_font_options());
-        $d                = alchemy_forms_style_defaults();
+        $style_in           = (isset($s['style']) && is_array($s['style'])) ? $s['style'] : [];
+        $google_fonts       = alchemy_forms_google_fonts();
+        $weight_opts        = alchemy_forms_font_weight_options();
+        $button_width_opts  = alchemy_forms_button_width_options();
+        $button_align_opts  = alchemy_forms_button_align_options();
+        $placeholder_style_opts = alchemy_forms_placeholder_font_style_options();
+        $placeholder_font_opts  = alchemy_forms_placeholder_font_options();
+        $d                  = alchemy_forms_style_defaults();
 
+        // Every field is submitted fresh on every save (the Style panel always
+        // renders all 7 tabs), so unlike reading a stored form, no legacy
+        // fallback is needed here — just validate against this field's own
+        // options/default via the shared resolvers.
         $settings['style'] = [
-            'primary_color'        => alchemy_forms_sanitize_hex($style_in['primary_color'] ?? '', $d['primary_color']),
-            'accent_color'         => alchemy_forms_sanitize_hex($style_in['accent_color'] ?? '', $d['accent_color']),
-            'border_color'         => alchemy_forms_sanitize_hex($style_in['border_color'] ?? '', $d['border_color']),
-            'placeholder_color'    => alchemy_forms_sanitize_hex($style_in['placeholder_color'] ?? '', $d['placeholder_color']),
-            'muted_color'          => alchemy_forms_sanitize_hex($style_in['muted_color'] ?? '', $d['muted_color']),
-            'radius'               => alchemy_forms_sanitize_px($style_in['radius'] ?? null, $d['radius']),
-            'heading_font'         => (isset($style_in['heading_font']) && in_array($style_in['heading_font'], $google_font_keys, true)) ? $style_in['heading_font'] : $d['heading_font'],
-            'heading_weight'       => (isset($style_in['heading_weight']) && in_array((int) $style_in['heading_weight'], $weight_keys, true)) ? (int) $style_in['heading_weight'] : $d['heading_weight'],
-            'body_font'            => (isset($style_in['body_font']) && in_array($style_in['body_font'], $google_font_keys, true)) ? $style_in['body_font'] : $d['body_font'],
-            'body_weight'          => (isset($style_in['body_weight']) && in_array((int) $style_in['body_weight'], $weight_keys, true)) ? (int) $style_in['body_weight'] : $d['body_weight'],
-            'label_color'          => alchemy_forms_sanitize_hex($style_in['label_color'] ?? '', $d['label_color']),
-            'label_font_size'      => alchemy_forms_sanitize_px($style_in['label_font_size'] ?? null, $d['label_font_size']),
-            'field_gap'            => alchemy_forms_sanitize_px($style_in['field_gap'] ?? null, $d['field_gap']),
-            'input_padding'        => alchemy_forms_sanitize_px($style_in['input_padding'] ?? null, $d['input_padding']),
-            'input_bg_color'       => alchemy_forms_sanitize_hex($style_in['input_bg_color'] ?? '', $d['input_bg_color']),
-            'button_bg_color'      => alchemy_forms_sanitize_hex($style_in['button_bg_color'] ?? '', $d['button_bg_color']),
-            'button_hover_color'   => alchemy_forms_sanitize_hex($style_in['button_hover_color'] ?? '', $d['button_hover_color']),
-            'button_text_color'    => alchemy_forms_sanitize_hex($style_in['button_text_color'] ?? '', $d['button_text_color']),
-            'button_padding'       => alchemy_forms_sanitize_px($style_in['button_padding'] ?? null, $d['button_padding']),
-            'button_font_size'     => alchemy_forms_sanitize_px($style_in['button_font_size'] ?? null, $d['button_font_size']),
-            'button_width'         => (isset($style_in['button_width']) && in_array($style_in['button_width'], $button_width_keys, true)) ? $style_in['button_width'] : $d['button_width'],
-            'button_align'         => (isset($style_in['button_align']) && in_array($style_in['button_align'], $button_align_keys, true)) ? $style_in['button_align'] : $d['button_align'],
-            'button_spacing'       => alchemy_forms_sanitize_px($style_in['button_spacing'] ?? null, $d['button_spacing'], 0, 200),
-            'placeholder_font'     => (isset($style_in['placeholder_font']) && in_array($style_in['placeholder_font'], $placeholder_font_keys, true)) ? $style_in['placeholder_font'] : $d['placeholder_font'],
-            'placeholder_weight'   => (isset($style_in['placeholder_weight']) && in_array((int) $style_in['placeholder_weight'], $weight_keys, true)) ? (int) $style_in['placeholder_weight'] : $d['placeholder_weight'],
-            'placeholder_font_style' => (isset($style_in['placeholder_font_style']) && in_array($style_in['placeholder_font_style'], $placeholder_style_keys, true)) ? $style_in['placeholder_font_style'] : $d['placeholder_font_style'],
-            'step_color'           => alchemy_forms_sanitize_hex($style_in['step_color'] ?? '', $d['step_color']),
-            'container_bg_color'   => alchemy_forms_sanitize_hex($style_in['container_bg_color'] ?? '', $d['container_bg_color']),
-            'container_bg_opacity' => alchemy_forms_sanitize_px($style_in['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100),
-            'container_padding'    => alchemy_forms_sanitize_px($style_in['container_padding'] ?? null, $d['container_padding']),
-            'container_border_width' => alchemy_forms_sanitize_px($style_in['container_border_width'] ?? null, $d['container_border_width'], 0, 50),
-            'shadow_enabled'       => !empty($style_in['shadow_enabled']) ? 1 : 0,
-            'shadow_color'         => alchemy_forms_sanitize_hex($style_in['shadow_color'] ?? '', $d['shadow_color']),
-            'shadow_opacity'       => alchemy_forms_sanitize_px($style_in['shadow_opacity'] ?? null, $d['shadow_opacity'], 0, 100),
-            'shadow_blur'          => alchemy_forms_sanitize_px($style_in['shadow_blur'] ?? null, $d['shadow_blur'], 0, 100),
+            'title_color'      => alchemy_forms_resolve_style_color($style_in, 'title_color', $d),
+            'title_font'       => alchemy_forms_resolve_style_font($style_in, 'title_font', $d, $google_fonts),
+            'title_weight'     => alchemy_forms_resolve_style_weight($style_in, 'title_weight', $d, $weight_opts),
+            'title_font_size'  => alchemy_forms_resolve_style_px($style_in, 'title_font_size', $d),
+
+            'label_color'          => alchemy_forms_resolve_style_color($style_in, 'label_color', $d),
+            'label_font'           => alchemy_forms_resolve_style_font($style_in, 'label_font', $d, $google_fonts),
+            'label_weight'         => alchemy_forms_resolve_style_weight($style_in, 'label_weight', $d, $weight_opts),
+            'label_font_size'      => alchemy_forms_resolve_style_px($style_in, 'label_font_size', $d),
+            'label_required_color' => alchemy_forms_resolve_style_color($style_in, 'label_required_color', $d),
+
+            'input_border_color' => alchemy_forms_resolve_style_color($style_in, 'input_border_color', $d),
+            'input_bg_color'     => alchemy_forms_resolve_style_color($style_in, 'input_bg_color', $d),
+            'input_text_color'   => alchemy_forms_resolve_style_color($style_in, 'input_text_color', $d),
+            'input_focus_color'  => alchemy_forms_resolve_style_color($style_in, 'input_focus_color', $d),
+            'input_font'         => alchemy_forms_resolve_style_font($style_in, 'input_font', $d, $google_fonts),
+            'input_weight'       => alchemy_forms_resolve_style_weight($style_in, 'input_weight', $d, $weight_opts),
+            'input_font_size'    => alchemy_forms_resolve_style_px($style_in, 'input_font_size', $d),
+            'input_padding'      => alchemy_forms_resolve_style_px($style_in, 'input_padding', $d),
+            'field_gap'          => alchemy_forms_resolve_style_px($style_in, 'field_gap', $d),
+            'input_hint_color'   => alchemy_forms_resolve_style_color($style_in, 'input_hint_color', $d),
+
+            'placeholder_color'      => alchemy_forms_resolve_style_color($style_in, 'placeholder_color', $d),
+            'placeholder_font'       => alchemy_forms_resolve_style_choice($style_in, 'placeholder_font', $d, array_keys($placeholder_font_opts)),
+            'placeholder_weight'     => alchemy_forms_resolve_style_weight($style_in, 'placeholder_weight', $d, $weight_opts),
+            'placeholder_font_size'  => alchemy_forms_resolve_style_px($style_in, 'placeholder_font_size', $d),
+            'placeholder_font_style' => alchemy_forms_resolve_style_choice($style_in, 'placeholder_font_style', $d, array_keys($placeholder_style_opts)),
+
+            'button_bg_color'    => alchemy_forms_resolve_style_color($style_in, 'button_bg_color', $d),
+            'button_hover_color' => alchemy_forms_resolve_style_color($style_in, 'button_hover_color', $d),
+            'button_text_color'  => alchemy_forms_resolve_style_color($style_in, 'button_text_color', $d),
+            'button_font'        => alchemy_forms_resolve_style_font($style_in, 'button_font', $d, $google_fonts),
+            'button_weight'      => alchemy_forms_resolve_style_weight($style_in, 'button_weight', $d, $weight_opts),
+            'button_font_size'   => alchemy_forms_resolve_style_px($style_in, 'button_font_size', $d),
+            'button_padding'     => alchemy_forms_resolve_style_px($style_in, 'button_padding', $d),
+            'button_width'       => alchemy_forms_resolve_style_choice($style_in, 'button_width', $d, array_keys($button_width_opts)),
+            'button_align'       => alchemy_forms_resolve_style_choice($style_in, 'button_align', $d, array_keys($button_align_opts)),
+            'button_spacing'     => alchemy_forms_resolve_style_px($style_in, 'button_spacing', $d, 0, 200),
+
+            'step_color'       => alchemy_forms_resolve_style_color($style_in, 'step_color', $d),
+            'step_font'        => alchemy_forms_resolve_style_font($style_in, 'step_font', $d, $google_fonts),
+            'step_weight'      => alchemy_forms_resolve_style_weight($style_in, 'step_weight', $d, $weight_opts),
+            'step_font_size'   => alchemy_forms_resolve_style_px($style_in, 'step_font_size', $d),
+            'step_label_color' => alchemy_forms_resolve_style_color($style_in, 'step_label_color', $d),
+
+            'radius'                  => alchemy_forms_resolve_style_px($style_in, 'radius', $d),
+            'container_bg_color'      => alchemy_forms_resolve_style_color($style_in, 'container_bg_color', $d),
+            'container_bg_opacity'    => alchemy_forms_resolve_style_px($style_in, 'container_bg_opacity', $d, 0, 100),
+            'container_border_color'  => alchemy_forms_resolve_style_color($style_in, 'container_border_color', $d),
+            'container_border_width'  => alchemy_forms_resolve_style_px($style_in, 'container_border_width', $d, 0, 50),
+            'container_padding'       => alchemy_forms_resolve_style_px($style_in, 'container_padding', $d),
+            'shadow_enabled'          => !empty($style_in['shadow_enabled']) ? 1 : 0,
+            'shadow_color'            => alchemy_forms_resolve_style_color($style_in, 'shadow_color', $d),
+            'shadow_opacity'          => alchemy_forms_resolve_style_px($style_in, 'shadow_opacity', $d, 0, 100),
+            'shadow_blur'             => alchemy_forms_resolve_style_px($style_in, 'shadow_blur', $d, 0, 100),
+            'success_heading_color'     => alchemy_forms_resolve_style_color($style_in, 'success_heading_color', $d),
+            'success_heading_font'      => alchemy_forms_resolve_style_font($style_in, 'success_heading_font', $d, $google_fonts),
+            'success_heading_weight'    => alchemy_forms_resolve_style_weight($style_in, 'success_heading_weight', $d, $weight_opts),
+            'success_heading_font_size' => alchemy_forms_resolve_style_px($style_in, 'success_heading_font_size', $d),
+            'success_text_color'        => alchemy_forms_resolve_style_color($style_in, 'success_text_color', $d),
+            'success_text_font'         => alchemy_forms_resolve_style_font($style_in, 'success_text_font', $d, $google_fonts),
+            'success_text_weight'       => alchemy_forms_resolve_style_weight($style_in, 'success_text_weight', $d, $weight_opts),
+            'success_text_font_size'    => alchemy_forms_resolve_style_px($style_in, 'success_text_font_size', $d),
         ];
 
         $flodesk_in = (isset($s['integrations']['flodesk']) && is_array($s['integrations']['flodesk'])) ? $s['integrations']['flodesk'] : [];

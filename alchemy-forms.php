@@ -3,7 +3,7 @@
  * Plugin Name: Alchemy Forms
  * Plugin URI:  https://websitealchemy.com
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     2.3.1
+ * Version:     2.4.0
  * Author:      Website Alchemy
  * Author URI:  https://websitealchemy.com
  * License:     GPL-2.0-or-later
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('ALCHEMY_FORMS_VERSION', '2.3.1');
+define('ALCHEMY_FORMS_VERSION', '2.4.0');
 define('ALCHEMY_FORMS_DIR', plugin_dir_path(__FILE__));
 define('ALCHEMY_FORMS_URL', plugin_dir_url(__FILE__));
 
@@ -295,6 +295,42 @@ function alchemy_forms_sanitize_px($value, $fallback, $min = 0, $max = 999) {
 }
 
 /**
+ * Shared style-value resolvers — used by both the Style metabox (reading
+ * saved values to pre-fill the form) and the front-end resolver (render.php)
+ * so the two can't drift apart. Every per-component style key optionally
+ * falls back to an old pre-2.4.0 global key (e.g. a new "input_font" falls
+ * back to the old global "body_font") so a form saved before the per-tab
+ * redesign keeps its old appearance until it's next edited and re-saved.
+ */
+function alchemy_forms_resolve_style_value($style, $key, $d, $legacy_key = null) {
+    if (array_key_exists($key, $style) && $style[$key] !== '') {
+        return $style[$key];
+    }
+    if ($legacy_key && array_key_exists($legacy_key, $style) && $style[$legacy_key] !== '') {
+        return $style[$legacy_key];
+    }
+    return $d[$key];
+}
+function alchemy_forms_resolve_style_color($style, $key, $d, $legacy_key = null) {
+    return alchemy_forms_sanitize_hex(alchemy_forms_resolve_style_value($style, $key, $d, $legacy_key), $d[$key]);
+}
+function alchemy_forms_resolve_style_px($style, $key, $d, $min = 0, $max = 999) {
+    return alchemy_forms_sanitize_px($style[$key] ?? null, $d[$key], $min, $max);
+}
+function alchemy_forms_resolve_style_font($style, $key, $d, $google_fonts, $legacy_key = null) {
+    $val = alchemy_forms_resolve_style_value($style, $key, $d, $legacy_key);
+    return isset($google_fonts[$val]) ? $val : $d[$key];
+}
+function alchemy_forms_resolve_style_weight($style, $key, $d, $weight_opts, $legacy_key = null) {
+    $val = (int) alchemy_forms_resolve_style_value($style, $key, $d, $legacy_key);
+    return isset($weight_opts[$val]) ? $val : (int) $d[$key];
+}
+function alchemy_forms_resolve_style_choice($style, $key, $d, $valid_keys) {
+    $val = $style[$key] ?? null;
+    return ($val !== null && in_array($val, $valid_keys, true)) ? $val : $d[$key];
+}
+
+/**
  * Parse a recipient setting into a list of valid email addresses. Accepts
  * either the current comma/newline-separated string from the settings field,
  * or an already-stored array (so old forms saved before this existed keep
@@ -316,44 +352,97 @@ function alchemy_forms_parse_recipients($value) {
 /**
  * Default style values, shared between the Style metabox (admin-editor.php)
  * and the front-end resolver (render.php) so the two can't drift apart.
+ *
+ * Every component (Title/Label/Inputs/Placeholder/Button/Steps/Container)
+ * owns its own color(s) and, where it renders text, its own independent
+ * font/weight/size — nothing is shared across tabs any more. The handful of
+ * keys under "Legacy (pre-2.4.0), kept only for migration" are never shown
+ * in the UI or written by the save handler; alchemy_forms_resolve_style()
+ * reads them as a fallback source so a form saved before this existed keeps
+ * its old appearance (approximately) until it's next edited and re-saved.
  */
 function alchemy_forms_style_defaults() {
     return [
-        'primary_color'        => '#2F4F3E',
-        'accent_color'         => '#C9A227',
-        'border_color'         => '#DCE3D9',
-        'placeholder_color'    => '#5B6B60',
-        'muted_color'          => '#5B6B60',
-        'radius'               => 10,
-        'heading_font'         => 'Fraunces',
-        'heading_weight'       => 600,
-        'body_font'            => 'Inter',
-        'body_weight'          => 400,
+        // Title (the main form heading)
+        'title_color'          => '#22392B',
+        'title_font'           => 'Fraunces',
+        'title_weight'         => 600,
+        'title_font_size'      => 28,
+
+        // Label (field labels)
         'label_color'          => '#1F2A23',
+        'label_font'           => 'Inter',
+        'label_weight'         => 500,
         'label_font_size'      => 14,
-        'field_gap'            => 20,
-        'input_padding'        => 10,
+        'label_required_color' => '#C9A227',
+
+        // Inputs
+        'input_border_color'   => '#DCE3D9',
         'input_bg_color'       => '#F6F8F3',
+        'input_text_color'     => '#1F2A23',
+        'input_focus_color'    => '#2F4F3E',
+        'input_font'           => 'Inter',
+        'input_weight'         => 400,
+        'input_font_size'      => 15,
+        'input_padding'        => 10,
+        'field_gap'            => 20,
+        'input_hint_color'     => '#5B6B60',
+
+        // Placeholder text (its own tab, independent of real input text)
+        'placeholder_color'      => '#5B6B60',
+        'placeholder_font'       => 'inherit',
+        'placeholder_weight'     => 400,
+        'placeholder_font_size'  => 15,
+        'placeholder_font_style' => 'normal',
+
+        // Button (submit, and the multi-step Back/Next nav — they always match)
         'button_bg_color'      => '#2F4F3E',
         'button_hover_color'   => '#22392B',
         'button_text_color'    => '#FFFFFF',
-        'button_padding'       => 13,
+        'button_font'          => 'Inter',
+        'button_weight'        => 600,
         'button_font_size'     => 15,
+        'button_padding'       => 13,
         'button_width'         => 'auto',
         'button_align'         => 'left',
         'button_spacing'       => 28,
-        'placeholder_font'       => 'inherit',
-        'placeholder_weight'     => 400,
-        'placeholder_font_style' => 'normal',
+
+        // Steps (multi-step progress bar, step title, "Step X of Y" label)
         'step_color'           => '#2F4F3E',
-        'container_bg_color'   => '#FFFFFF',
-        'container_bg_opacity' => 100,
-        'container_padding'    => 40,
+        'step_font'            => 'Fraunces',
+        'step_weight'           => 600,
+        'step_font_size'        => 20,
+        'step_label_color'      => '#5B6B60',
+
+        // Container (the outer box) and the success message it shows on submit
+        'radius'                => 10,
+        'container_bg_color'    => '#FFFFFF',
+        'container_bg_opacity'  => 100,
+        'container_border_color' => '#DCE3D9',
         'container_border_width' => 1,
+        'container_padding'    => 40,
         'shadow_enabled'       => 1,
         'shadow_color'         => '#1F2A23',
         'shadow_opacity'       => 6,
         'shadow_blur'          => 24,
+        'success_heading_color'     => '#22392B',
+        'success_heading_font'      => 'Fraunces',
+        'success_heading_weight'    => 600,
+        'success_heading_font_size' => 24,
+        'success_text_color'        => '#5B6B60',
+        'success_text_font'         => 'Inter',
+        'success_text_weight'       => 400,
+        'success_text_font_size'    => 15,
+
+        // Legacy (pre-2.4.0), kept only for migration — see docblock above.
+        'primary_color'   => '#2F4F3E',
+        'accent_color'    => '#C9A227',
+        'border_color'    => '#DCE3D9',
+        'muted_color'     => '#5B6B60',
+        'heading_font'    => 'Fraunces',
+        'heading_weight'  => 600,
+        'body_font'       => 'Inter',
+        'body_weight'     => 400,
     ];
 }
 
@@ -370,11 +459,12 @@ function alchemy_forms_placeholder_font_style_options() {
 
 /**
  * Placeholder font-family options — "inherit" (default) uses whatever the
- * Body font setting already is; anything else picks a different curated
- * Google Font for placeholder text only, independent of real input text.
+ * Inputs tab's own font setting already is; anything else picks a different
+ * curated Google Font for placeholder text only, independent of real input
+ * text.
  */
 function alchemy_forms_placeholder_font_options() {
-    $options = ['inherit' => __('Match body font', 'alchemy-forms')];
+    $options = ['inherit' => __('Match input font', 'alchemy-forms')];
     foreach (alchemy_forms_google_fonts() as $key => $font) {
         $options[$key] = $font['label'];
     }

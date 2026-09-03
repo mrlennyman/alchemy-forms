@@ -534,53 +534,109 @@ function alchemy_forms_handle_upload($input_name, $required, $label, array &$err
  * ---------------------------------------------------------------------- */
 function alchemy_forms_resolve_style($style_settings) {
     if (!is_array($style_settings)) $style_settings = [];
-    $d = alchemy_forms_style_defaults();
+    $d            = alchemy_forms_style_defaults();
+    $google_fonts = alchemy_forms_google_fonts();
+    $weight_opts  = alchemy_forms_font_weight_options();
 
-    $primary      = alchemy_forms_sanitize_hex($style_settings['primary_color'] ?? '', $d['primary_color']);
-    $accent       = alchemy_forms_sanitize_hex($style_settings['accent_color'] ?? '', $d['accent_color']);
-    $border       = alchemy_forms_sanitize_hex($style_settings['border_color'] ?? '', $d['border_color']);
-    $placeholder  = alchemy_forms_sanitize_hex($style_settings['placeholder_color'] ?? '', $d['placeholder_color']);
-    $muted        = alchemy_forms_sanitize_hex($style_settings['muted_color'] ?? '', $d['muted_color']);
-    // Forms saved under the old preset system stored a slug (e.g. 'rounded') here;
-    // alchemy_forms_sanitize_px() falls back cleanly when the value isn't numeric.
-    $radius       = alchemy_forms_sanitize_px($style_settings['radius'] ?? null, $d['radius']);
+    // A form saved before the 2.4.0 per-component redesign only has the old
+    // global keys (primary/accent/border/muted color, heading/body font —
+    // themselves possibly migrated further back from the original "Font
+    // pairing" preset). Resolve those once into a patched defaults array so
+    // every per-component field below falls back to its pre-2.4.0 equivalent
+    // and an unedited form keeps rendering the same until it's next saved.
+    $legacy_font_key = !empty($style_settings['font']) ? $style_settings['font'] : null;
+    $legacy_preset   = alchemy_forms_legacy_font_migration($legacy_font_key ?: 'default');
+    $legacy_heading_font   = $legacy_font_key ? $legacy_preset['heading_font'] : $d['heading_font'];
+    $legacy_heading_weight = $legacy_font_key ? $legacy_preset['heading_weight'] : $d['heading_weight'];
+    $legacy_body_font      = $legacy_font_key ? $legacy_preset['body_font'] : $d['body_font'];
+    $legacy_body_weight    = $legacy_font_key ? $legacy_preset['body_weight'] : $d['body_weight'];
+    if (isset($style_settings['heading_font'])) $legacy_heading_font = $style_settings['heading_font'];
+    if (isset($style_settings['heading_weight'])) $legacy_heading_weight = (int) $style_settings['heading_weight'];
+    if (isset($style_settings['body_font'])) $legacy_body_font = $style_settings['body_font'];
+    if (isset($style_settings['body_weight'])) $legacy_body_weight = (int) $style_settings['body_weight'];
 
-    $label_color       = alchemy_forms_sanitize_hex($style_settings['label_color'] ?? '', $d['label_color']);
-    $label_font_size   = alchemy_forms_sanitize_px($style_settings['label_font_size'] ?? null, $d['label_font_size']);
-    $field_gap         = alchemy_forms_sanitize_px($style_settings['field_gap'] ?? null, $d['field_gap']);
-    $input_padding     = alchemy_forms_sanitize_px($style_settings['input_padding'] ?? null, $d['input_padding']);
-    $input_bg          = alchemy_forms_sanitize_hex($style_settings['input_bg_color'] ?? '', $d['input_bg_color']);
-    $button_bg         = alchemy_forms_sanitize_hex($style_settings['button_bg_color'] ?? '', $d['button_bg_color']);
-    $button_hover      = alchemy_forms_sanitize_hex($style_settings['button_hover_color'] ?? '', $d['button_hover_color']);
-    $button_text       = alchemy_forms_sanitize_hex($style_settings['button_text_color'] ?? '', $d['button_text_color']);
+    $ld = $d;
+    $ld['title_font'] = $ld['step_font'] = $ld['success_heading_font'] = $legacy_heading_font;
+    $ld['title_weight'] = $ld['step_weight'] = $ld['success_heading_weight'] = $legacy_heading_weight;
+    $ld['label_font'] = $ld['input_font'] = $ld['button_font'] = $ld['success_text_font'] = $legacy_body_font;
+    $ld['label_weight'] = $ld['input_weight'] = $ld['button_weight'] = $ld['success_text_weight'] = $legacy_body_weight;
+    // The pre-2.4.0 design always computed the title/success-heading color as
+    // the legacy Primary color darkened by 22% — never stored separately.
+    $legacy_primary_dark = alchemy_forms_darken_hex(alchemy_forms_resolve_style_color($style_settings, 'primary_color', $d), 0.22);
+    $ld['title_color'] = $ld['success_heading_color'] = $legacy_primary_dark;
+
+    $title_color     = alchemy_forms_resolve_style_color($style_settings, 'title_color', $ld);
+    $title_font_key  = alchemy_forms_resolve_style_font($style_settings, 'title_font', $ld, $google_fonts);
+    $title_weight    = alchemy_forms_resolve_style_weight($style_settings, 'title_weight', $ld, $weight_opts);
+    $title_font_size = alchemy_forms_resolve_style_px($style_settings, 'title_font_size', $d);
+
+    $label_color     = alchemy_forms_resolve_style_color($style_settings, 'label_color', $d);
+    $label_font_key  = alchemy_forms_resolve_style_font($style_settings, 'label_font', $ld, $google_fonts);
+    $label_weight    = alchemy_forms_resolve_style_weight($style_settings, 'label_weight', $ld, $weight_opts);
+    $label_font_size = alchemy_forms_resolve_style_px($style_settings, 'label_font_size', $d);
+    $label_required  = alchemy_forms_resolve_style_color($style_settings, 'label_required_color', $d, 'accent_color');
+
+    $input_border    = alchemy_forms_resolve_style_color($style_settings, 'input_border_color', $d, 'border_color');
+    $input_bg        = alchemy_forms_resolve_style_color($style_settings, 'input_bg_color', $d);
+    $input_text      = alchemy_forms_resolve_style_color($style_settings, 'input_text_color', $d);
+    $input_focus     = alchemy_forms_resolve_style_color($style_settings, 'input_focus_color', $d, 'primary_color');
+    [$ifr, $ifg, $ifb] = alchemy_forms_hex_to_rgb($input_focus);
+    $input_focus_shadow = sprintf('rgba(%d, %d, %d, 0.15)', $ifr, $ifg, $ifb);
+    $input_font_key  = alchemy_forms_resolve_style_font($style_settings, 'input_font', $ld, $google_fonts);
+    $input_weight    = alchemy_forms_resolve_style_weight($style_settings, 'input_weight', $ld, $weight_opts);
+    $input_font_size = alchemy_forms_resolve_style_px($style_settings, 'input_font_size', $d);
+    $input_padding   = alchemy_forms_resolve_style_px($style_settings, 'input_padding', $d);
+    $field_gap       = alchemy_forms_resolve_style_px($style_settings, 'field_gap', $d);
+    $input_hint      = alchemy_forms_resolve_style_color($style_settings, 'input_hint_color', $d, 'muted_color');
+
+    $placeholder_style_opts = alchemy_forms_placeholder_font_style_options();
+    $placeholder_font_opts  = alchemy_forms_placeholder_font_options();
+    $placeholder_color      = alchemy_forms_resolve_style_color($style_settings, 'placeholder_color', $d);
+    $placeholder_font_key   = alchemy_forms_resolve_style_choice($style_settings, 'placeholder_font', $d, array_keys($placeholder_font_opts));
+    $placeholder_weight     = alchemy_forms_resolve_style_weight($style_settings, 'placeholder_weight', $d, $weight_opts);
+    $placeholder_font_size  = alchemy_forms_resolve_style_px($style_settings, 'placeholder_font_size', $d);
+    $placeholder_font_style = alchemy_forms_resolve_style_choice($style_settings, 'placeholder_font_style', $d, array_keys($placeholder_style_opts));
+    // "inherit" (the default) matches whatever the Inputs tab's own font is;
+    // anything else loads a second Google Fonts family for placeholder text only.
+    if ($placeholder_font_key === 'inherit' || !isset($google_fonts[$placeholder_font_key])) {
+        $placeholder_font_key = $input_font_key;
+    }
+
+    $button_bg        = alchemy_forms_resolve_style_color($style_settings, 'button_bg_color', $d);
+    $button_hover      = alchemy_forms_resolve_style_color($style_settings, 'button_hover_color', $d);
+    $button_text       = alchemy_forms_resolve_style_color($style_settings, 'button_text_color', $d);
     [$btr, $btg, $btb] = alchemy_forms_hex_to_rgb($button_text);
     $button_text_dim   = sprintf('rgba(%d, %d, %d, 0.4)', $btr, $btg, $btb);
-    $button_padding    = alchemy_forms_sanitize_px($style_settings['button_padding'] ?? null, $d['button_padding']);
-    $button_font_size  = alchemy_forms_sanitize_px($style_settings['button_font_size'] ?? null, $d['button_font_size']);
+    $button_font_key   = alchemy_forms_resolve_style_font($style_settings, 'button_font', $ld, $google_fonts);
+    $button_weight     = alchemy_forms_resolve_style_weight($style_settings, 'button_weight', $ld, $weight_opts);
+    $button_font_size  = alchemy_forms_resolve_style_px($style_settings, 'button_font_size', $d);
+    $button_padding    = alchemy_forms_resolve_style_px($style_settings, 'button_padding', $d);
+    $button_width_opts = alchemy_forms_button_width_options();
+    $button_align_opts = alchemy_forms_button_align_options();
+    $button_width      = alchemy_forms_resolve_style_choice($style_settings, 'button_width', $d, array_keys($button_width_opts));
+    $button_align      = alchemy_forms_resolve_style_choice($style_settings, 'button_align', $d, array_keys($button_align_opts));
+    $button_spacing    = alchemy_forms_resolve_style_px($style_settings, 'button_spacing', $d, 0, 200);
 
-    $button_width_keys = array_keys(alchemy_forms_button_width_options());
-    $button_align_keys = array_keys(alchemy_forms_button_align_options());
-    $button_width      = (isset($style_settings['button_width']) && in_array($style_settings['button_width'], $button_width_keys, true)) ? $style_settings['button_width'] : $d['button_width'];
-    $button_align      = (isset($style_settings['button_align']) && in_array($style_settings['button_align'], $button_align_keys, true)) ? $style_settings['button_align'] : $d['button_align'];
-    $button_spacing    = alchemy_forms_sanitize_px($style_settings['button_spacing'] ?? null, $d['button_spacing'], 0, 200);
+    $step_color       = alchemy_forms_resolve_style_color($style_settings, 'step_color', $d);
+    $step_font_key    = alchemy_forms_resolve_style_font($style_settings, 'step_font', $ld, $google_fonts);
+    $step_weight      = alchemy_forms_resolve_style_weight($style_settings, 'step_weight', $ld, $weight_opts);
+    $step_font_size   = alchemy_forms_resolve_style_px($style_settings, 'step_font_size', $d);
+    $step_label_color = alchemy_forms_resolve_style_color($style_settings, 'step_label_color', $d, 'muted_color');
 
-    $placeholder_style_keys = array_keys(alchemy_forms_placeholder_font_style_options());
-    $placeholder_font_style = (isset($style_settings['placeholder_font_style']) && in_array($style_settings['placeholder_font_style'], $placeholder_style_keys, true)) ? $style_settings['placeholder_font_style'] : $d['placeholder_font_style'];
-
-    $step_color = alchemy_forms_sanitize_hex($style_settings['step_color'] ?? '', $d['step_color']);
-
-    $container_bg          = alchemy_forms_sanitize_hex($style_settings['container_bg_color'] ?? '', $d['container_bg_color']);
-    $container_opacity     = alchemy_forms_sanitize_px($style_settings['container_bg_opacity'] ?? null, $d['container_bg_opacity'], 0, 100);
-    $container_padding     = alchemy_forms_sanitize_px($style_settings['container_padding'] ?? null, $d['container_padding']);
-    $container_border_width = alchemy_forms_sanitize_px($style_settings['container_border_width'] ?? null, $d['container_border_width'], 0, 50);
+    $radius             = alchemy_forms_resolve_style_px($style_settings, 'radius', $d);
+    $container_bg       = alchemy_forms_resolve_style_color($style_settings, 'container_bg_color', $d);
+    $container_opacity  = alchemy_forms_resolve_style_px($style_settings, 'container_bg_opacity', $d, 0, 100);
+    $container_border   = alchemy_forms_resolve_style_color($style_settings, 'container_border_color', $d, 'border_color');
+    $container_border_width = alchemy_forms_resolve_style_px($style_settings, 'container_border_width', $d, 0, 50);
+    $container_padding  = alchemy_forms_resolve_style_px($style_settings, 'container_padding', $d);
 
     [$cr, $cg, $cb] = alchemy_forms_hex_to_rgb($container_bg);
     $container_rgba = sprintf('rgba(%d, %d, %d, %s)', $cr, $cg, $cb, $container_opacity / 100);
 
     $shadow_enabled = isset($style_settings['shadow_enabled']) ? !empty($style_settings['shadow_enabled']) : !empty($d['shadow_enabled']);
-    $shadow_color   = alchemy_forms_sanitize_hex($style_settings['shadow_color'] ?? '', $d['shadow_color']);
-    $shadow_opacity = alchemy_forms_sanitize_px($style_settings['shadow_opacity'] ?? null, $d['shadow_opacity'], 0, 100);
-    $shadow_blur    = alchemy_forms_sanitize_px($style_settings['shadow_blur'] ?? null, $d['shadow_blur'], 0, 100);
+    $shadow_color   = alchemy_forms_resolve_style_color($style_settings, 'shadow_color', $d);
+    $shadow_opacity = alchemy_forms_resolve_style_px($style_settings, 'shadow_opacity', $d, 0, 100);
+    $shadow_blur    = alchemy_forms_resolve_style_px($style_settings, 'shadow_blur', $d, 0, 100);
     if ($shadow_enabled) {
         [$sr, $sg, $sb] = alchemy_forms_hex_to_rgb($shadow_color);
         $shadow_css = sprintf('0 8px %dpx rgba(%d, %d, %d, %s)', $shadow_blur, $sr, $sg, $sb, $shadow_opacity / 100);
@@ -588,66 +644,79 @@ function alchemy_forms_resolve_style($style_settings) {
         $shadow_css = 'none';
     }
 
-    // Heading/Body/Placeholder each pick an independent Google Font + weight.
-    // A form saved before this existed only has the old "Font pairing" preset
-    // key (style_settings['font']) — alchemy_forms_legacy_font_migration()
-    // maps that to equivalent heading/body settings so it renders unchanged
-    // until the form is next edited and re-saved with the new fields.
-    $google_fonts = alchemy_forms_google_fonts();
-    $weight_keys  = array_keys(alchemy_forms_font_weight_options());
-    $legacy_key   = !empty($style_settings['font']) ? $style_settings['font'] : null;
-    $legacy       = alchemy_forms_legacy_font_migration($legacy_key ?: 'default');
-
-    $heading_font_key = (isset($style_settings['heading_font']) && isset($google_fonts[$style_settings['heading_font']])) ? $style_settings['heading_font'] : ($legacy_key ? $legacy['heading_font'] : $d['heading_font']);
-    $heading_weight   = (isset($style_settings['heading_weight']) && in_array((int) $style_settings['heading_weight'], $weight_keys, true)) ? (int) $style_settings['heading_weight'] : ($legacy_key ? $legacy['heading_weight'] : $d['heading_weight']);
-    $body_font_key    = (isset($style_settings['body_font']) && isset($google_fonts[$style_settings['body_font']])) ? $style_settings['body_font'] : ($legacy_key ? $legacy['body_font'] : $d['body_font']);
-    $body_weight      = (isset($style_settings['body_weight']) && in_array((int) $style_settings['body_weight'], $weight_keys, true)) ? (int) $style_settings['body_weight'] : ($legacy_key ? $legacy['body_weight'] : $d['body_weight']);
-    $heading_font = $google_fonts[$heading_font_key];
-    $body_font    = $google_fonts[$body_font_key];
-
-    // "inherit" (the default) matches whatever Body font above already sets;
-    // anything else picks a different curated font for placeholder text
-    // only, loaded separately since the visitor's browser may need a second
-    // Google Fonts family the body font didn't already load.
-    $placeholder_font_keys = array_keys(alchemy_forms_placeholder_font_options());
-    $placeholder_font_key  = (isset($style_settings['placeholder_font']) && in_array($style_settings['placeholder_font'], $placeholder_font_keys, true)) ? $style_settings['placeholder_font'] : $d['placeholder_font'];
-    $placeholder_font      = ($placeholder_font_key !== 'inherit' && isset($google_fonts[$placeholder_font_key])) ? $google_fonts[$placeholder_font_key] : $body_font;
-    $placeholder_weight    = (isset($style_settings['placeholder_weight']) && in_array((int) $style_settings['placeholder_weight'], $weight_keys, true)) ? (int) $style_settings['placeholder_weight'] : $d['placeholder_weight'];
+    $success_heading_color     = alchemy_forms_resolve_style_color($style_settings, 'success_heading_color', $ld);
+    $success_heading_font_key  = alchemy_forms_resolve_style_font($style_settings, 'success_heading_font', $ld, $google_fonts);
+    $success_heading_weight    = alchemy_forms_resolve_style_weight($style_settings, 'success_heading_weight', $ld, $weight_opts);
+    $success_heading_font_size = alchemy_forms_resolve_style_px($style_settings, 'success_heading_font_size', $d);
+    $success_text_color        = alchemy_forms_resolve_style_color($style_settings, 'success_text_color', $d, 'muted_color');
+    $success_text_font_key     = alchemy_forms_resolve_style_font($style_settings, 'success_text_font', $ld, $google_fonts);
+    $success_text_weight       = alchemy_forms_resolve_style_weight($style_settings, 'success_text_weight', $ld, $weight_opts);
+    $success_text_font_size    = alchemy_forms_resolve_style_px($style_settings, 'success_text_font_size', $d);
 
     $vars = [
-        '--wa-primary'          => $primary,
-        '--wa-primary-dark'     => alchemy_forms_darken_hex($primary, 0.22),
-        '--wa-accent'           => $accent,
-        '--wa-border'           => $border,
-        '--wa-placeholder'      => $placeholder,
-        '--wa-muted'            => $muted,
-        '--wa-radius'           => $radius . 'px',
-        '--wa-font-display'     => $heading_font['family'],
-        '--wa-font-heading-weight' => $heading_weight,
-        '--wa-font-body'        => $body_font['family'],
-        '--wa-font-body-weight' => $body_weight,
-        '--wa-label-color'      => $label_color,
-        '--wa-label-font-size'  => $label_font_size . 'px',
-        '--wa-field-gap'        => $field_gap . 'px',
-        '--wa-input-padding'    => $input_padding . 'px',
-        '--wa-input-bg'         => $input_bg,
+        '--wa-title-color'      => $title_color,
+        '--wa-title-font'       => $google_fonts[$title_font_key]['family'],
+        '--wa-title-weight'     => $title_weight,
+        '--wa-title-size'       => $title_font_size . 'px',
+
+        '--wa-label-color'          => $label_color,
+        '--wa-label-font'           => $google_fonts[$label_font_key]['family'],
+        '--wa-label-weight'         => $label_weight,
+        '--wa-label-font-size'      => $label_font_size . 'px',
+        '--wa-label-required-color' => $label_required,
+
+        '--wa-input-border'  => $input_border,
+        '--wa-input-bg'      => $input_bg,
+        '--wa-input-text'    => $input_text,
+        '--wa-input-focus'   => $input_focus,
+        '--wa-input-focus-dark' => alchemy_forms_darken_hex($input_focus, 0.22),
+        '--wa-input-focus-shadow' => $input_focus_shadow,
+        '--wa-input-font'    => $google_fonts[$input_font_key]['family'],
+        '--wa-input-weight'  => $input_weight,
+        '--wa-input-size'    => $input_font_size . 'px',
+        '--wa-input-padding' => $input_padding . 'px',
+        '--wa-field-gap'     => $field_gap . 'px',
+        '--wa-input-hint'    => $input_hint,
+
+        '--wa-placeholder'             => $placeholder_color,
+        '--wa-placeholder-font'        => $google_fonts[$placeholder_font_key]['family'],
+        '--wa-placeholder-weight'      => $placeholder_weight,
+        '--wa-placeholder-size'        => $placeholder_font_size . 'px',
+        '--wa-placeholder-font-style'  => $placeholder_font_style,
+
         '--wa-button-bg'        => $button_bg,
         '--wa-button-bg-hover'  => $button_hover,
         '--wa-button-text'      => $button_text,
         '--wa-button-text-dim'  => $button_text_dim,
-        '--wa-button-padding'   => $button_padding . 'px',
+        '--wa-button-font'      => $google_fonts[$button_font_key]['family'],
+        '--wa-button-weight'    => $button_weight,
         '--wa-button-font-size' => $button_font_size . 'px',
+        '--wa-button-padding'   => $button_padding . 'px',
         '--wa-button-width'     => ($button_width === 'full') ? '100%' : 'auto',
         '--wa-button-align'     => $button_align,
         '--wa-button-spacing'   => $button_spacing . 'px',
-        '--wa-placeholder-font'       => $placeholder_font['family'],
-        '--wa-placeholder-font-weight' => $placeholder_weight,
-        '--wa-placeholder-font-style' => $placeholder_font_style,
+
         '--wa-step-color'       => $step_color,
-        '--wa-container-bg'     => $container_rgba,
-        '--wa-container-padding'      => $container_padding . 'px',
+        '--wa-step-font'        => $google_fonts[$step_font_key]['family'],
+        '--wa-step-weight'      => $step_weight,
+        '--wa-step-size'        => $step_font_size . 'px',
+        '--wa-step-label-color' => $step_label_color,
+
+        '--wa-radius'                 => $radius . 'px',
+        '--wa-container-bg'           => $container_rgba,
+        '--wa-container-border'       => $container_border,
         '--wa-container-border-width' => $container_border_width . 'px',
-        '--wa-shadow'           => $shadow_css,
+        '--wa-container-padding'      => $container_padding . 'px',
+        '--wa-shadow'                 => $shadow_css,
+
+        '--wa-success-heading-color' => $success_heading_color,
+        '--wa-success-heading-font'  => $google_fonts[$success_heading_font_key]['family'],
+        '--wa-success-heading-weight' => $success_heading_weight,
+        '--wa-success-heading-size'  => $success_heading_font_size . 'px',
+        '--wa-success-text-color'   => $success_text_color,
+        '--wa-success-text-font'    => $google_fonts[$success_text_font_key]['family'],
+        '--wa-success-text-weight'  => $success_text_weight,
+        '--wa-success-text-size'    => $success_text_font_size . 'px',
     ];
 
     $inline = '';
@@ -658,9 +727,14 @@ function alchemy_forms_resolve_style($style_settings) {
     return [
         'inline' => trim($inline),
         'fonts'  => [
-            ['key' => $heading_font_key, 'font' => $heading_font, 'weight' => $heading_weight],
-            ['key' => $body_font_key, 'font' => $body_font, 'weight' => $body_weight],
-            ['key' => ($placeholder_font_key !== 'inherit' ? $placeholder_font_key : $body_font_key), 'font' => $placeholder_font, 'weight' => $placeholder_weight],
+            ['key' => $title_font_key, 'font' => $google_fonts[$title_font_key], 'weight' => $title_weight],
+            ['key' => $label_font_key, 'font' => $google_fonts[$label_font_key], 'weight' => $label_weight],
+            ['key' => $input_font_key, 'font' => $google_fonts[$input_font_key], 'weight' => $input_weight],
+            ['key' => $placeholder_font_key, 'font' => $google_fonts[$placeholder_font_key], 'weight' => $placeholder_weight],
+            ['key' => $button_font_key, 'font' => $google_fonts[$button_font_key], 'weight' => $button_weight],
+            ['key' => $step_font_key, 'font' => $google_fonts[$step_font_key], 'weight' => $step_weight],
+            ['key' => $success_heading_font_key, 'font' => $google_fonts[$success_heading_font_key], 'weight' => $success_heading_weight],
+            ['key' => $success_text_font_key, 'font' => $google_fonts[$success_text_font_key], 'weight' => $success_text_weight],
         ],
     ];
 }
@@ -700,53 +774,71 @@ function alchemy_forms_enqueue_frontend_css($fonts = []) {
 function alchemy_forms_frontend_css() {
     return <<<CSS
 .wa-form-wrap {
-  --wa-primary: #2F4F3E;
-  --wa-primary-dark: #22392B;
-  --wa-accent: #C9A227;
-  --wa-bg: #F6F8F3;
-  --wa-surface: #FFFFFF;
-  --wa-text: #1F2A23;
-  --wa-muted: #5B6B60;
-  --wa-border: #DCE3D9;
-  --wa-placeholder: #5B6B60;
-  --wa-error: #B3261E;
-  --wa-error-bg: #FBEBEA;
-  --wa-radius: 10px;
-  --wa-font-display: 'Fraunces', Georgia, serif;
-  --wa-font-heading-weight: 600;
-  --wa-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --wa-font-body-weight: 400;
+  --wa-title-color: #22392B;
+  --wa-title-font: 'Fraunces', Georgia, serif;
+  --wa-title-weight: 600;
+  --wa-title-size: 28px;
   --wa-label-color: #1F2A23;
+  --wa-label-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --wa-label-weight: 500;
   --wa-label-font-size: 14px;
-  --wa-field-gap: 20px;
-  --wa-input-padding: 10px;
+  --wa-label-required-color: #C9A227;
+  --wa-input-border: #DCE3D9;
   --wa-input-bg: #F6F8F3;
+  --wa-input-text: #1F2A23;
+  --wa-input-focus: #2F4F3E;
+  --wa-input-focus-dark: #22392B;
+  --wa-input-focus-shadow: rgba(47,79,62,0.15);
+  --wa-input-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --wa-input-weight: 400;
+  --wa-input-size: 15px;
+  --wa-input-padding: 10px;
+  --wa-field-gap: 20px;
+  --wa-input-hint: #5B6B60;
+  --wa-placeholder: #5B6B60;
+  --wa-placeholder-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --wa-placeholder-weight: 400;
+  --wa-placeholder-size: 15px;
+  --wa-placeholder-font-style: normal;
   --wa-button-bg: #2F4F3E;
   --wa-button-bg-hover: #22392B;
   --wa-button-text: #FFFFFF;
   --wa-button-text-dim: rgba(255,255,255,0.4);
-  --wa-button-padding: 13px;
+  --wa-button-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --wa-button-weight: 600;
   --wa-button-font-size: 15px;
+  --wa-button-padding: 13px;
   --wa-button-width: auto;
   --wa-button-align: left;
   --wa-button-spacing: 28px;
-  --wa-placeholder-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --wa-placeholder-font-weight: 400;
-  --wa-placeholder-font-style: normal;
   --wa-step-color: #2F4F3E;
+  --wa-step-font: 'Fraunces', Georgia, serif;
+  --wa-step-weight: 600;
+  --wa-step-size: 20px;
+  --wa-step-label-color: #5B6B60;
+  --wa-radius: 10px;
   --wa-container-bg: #FFFFFF;
-  --wa-container-padding: 40px;
+  --wa-container-border: #DCE3D9;
   --wa-container-border-width: 1px;
+  --wa-container-padding: 40px;
   --wa-shadow: 0 8px 24px rgba(31,42,35,0.06);
+  --wa-success-heading-color: #22392B;
+  --wa-success-heading-font: 'Fraunces', Georgia, serif;
+  --wa-success-heading-weight: 600;
+  --wa-success-heading-size: 24px;
+  --wa-success-text-color: #5B6B60;
+  --wa-success-text-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --wa-success-text-weight: 400;
+  --wa-success-text-size: 15px;
   max-width: 720px;
   margin: 0 auto;
-  font-family: var(--wa-font-body);
-  color: var(--wa-text);
+  font-family: var(--wa-input-font);
+  color: var(--wa-input-text);
   box-sizing: border-box;
 }
 .wa-form-wrap *, .wa-form-wrap *::before, .wa-form-wrap *::after { box-sizing: inherit; }
-.wa-form-title { font-family: var(--wa-font-display); font-weight: var(--wa-font-heading-weight); font-size: 1.75rem; color: var(--wa-primary-dark); margin: 0 0 1.25rem; }
-.wa-form { background: var(--wa-container-bg); border: var(--wa-container-border-width) solid var(--wa-border); border-radius: calc(var(--wa-radius) + 6px); padding: var(--wa-container-padding); box-shadow: var(--wa-shadow); position: relative; }
+.wa-form-title { font-family: var(--wa-title-font); font-weight: var(--wa-title-weight); font-size: var(--wa-title-size); color: var(--wa-title-color); margin: 0 0 1.25rem; }
+.wa-form { background: var(--wa-container-bg); border: var(--wa-container-border-width) solid var(--wa-container-border); border-radius: calc(var(--wa-radius) + 6px); padding: var(--wa-container-padding); box-shadow: var(--wa-shadow); position: relative; }
 .wa-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--wa-field-gap); }
 .wa-field--half { grid-column: span 1; }
 .wa-field--full { grid-column: 1 / -1; }
@@ -756,33 +848,33 @@ function alchemy_forms_frontend_css() {
   .wa-field--half { grid-column: 1 / -1; }
   .wa-form { padding: min(var(--wa-container-padding), 1.75rem) min(var(--wa-container-padding), 1.5rem); }
 }
-.wa-field label { display: block; font-weight: 500; font-size: var(--wa-label-font-size); color: var(--wa-label-color); margin-bottom: 0.4rem; }
-.wa-req { color: var(--wa-accent); margin-left: 2px; }
+.wa-field label { display: block; font-family: var(--wa-label-font); font-weight: var(--wa-label-weight); font-size: var(--wa-label-font-size); color: var(--wa-label-color); margin-bottom: 0.4rem; }
+.wa-req { color: var(--wa-label-required-color); margin-left: 2px; }
 .wa-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .wa-field input[type=text], .wa-field input[type=email], .wa-field input[type=tel], .wa-field input[type=url], .wa-field input[type=date], .wa-field input[type=number], .wa-field select, .wa-field textarea {
-  width: 100%; font-family: var(--wa-font-body); font-weight: var(--wa-font-body-weight); font-size: 0.95rem; padding: var(--wa-input-padding);
-  border: 1px solid var(--wa-border); border-radius: var(--wa-radius); background: var(--wa-input-bg); color: var(--wa-text);
+  width: 100%; font-family: var(--wa-input-font); font-weight: var(--wa-input-weight); font-size: var(--wa-input-size); padding: var(--wa-input-padding);
+  border: 1px solid var(--wa-input-border); border-radius: var(--wa-radius); background: var(--wa-input-bg); color: var(--wa-input-text);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 .wa-field textarea { resize: vertical; min-height: 5.5rem; }
-.wa-field input::placeholder, .wa-field textarea::placeholder { color: var(--wa-placeholder); opacity: 1; font-style: var(--wa-placeholder-font-style); font-family: var(--wa-placeholder-font); font-weight: var(--wa-placeholder-font-weight); }
-.wa-field input:focus, .wa-field select:focus, .wa-field textarea:focus { outline: none; border-color: var(--wa-primary); background: var(--wa-surface); box-shadow: 0 0 0 3px rgba(47,79,62,0.15); }
-.wa-field input:focus-visible, .wa-field select:focus-visible, .wa-field textarea:focus-visible { outline: 2px solid var(--wa-accent); outline-offset: 1px; }
+.wa-field input::placeholder, .wa-field textarea::placeholder { color: var(--wa-placeholder); opacity: 1; font-style: var(--wa-placeholder-font-style); font-family: var(--wa-placeholder-font); font-weight: var(--wa-placeholder-weight); font-size: var(--wa-placeholder-size); }
+.wa-field input:focus, .wa-field select:focus, .wa-field textarea:focus { outline: none; border-color: var(--wa-input-focus); box-shadow: 0 0 0 3px var(--wa-input-focus-shadow); }
+.wa-field input:focus-visible, .wa-field select:focus-visible, .wa-field textarea:focus-visible { outline: 2px solid var(--wa-input-focus); outline-offset: 1px; }
 .wa-field-group { border: none; margin: 0; padding: 0; }
-.wa-field-group legend { display: block; width: 100%; font-weight: 500; font-size: var(--wa-label-font-size); color: var(--wa-label-color); margin-bottom: 0.5rem; padding: 0; }
-.wa-choice-option { display: flex; align-items: center; gap: 0.5rem; font-weight: 400; font-size: 0.92rem; color: var(--wa-text); margin-bottom: 0.5rem; cursor: pointer; }
+.wa-field-group legend { display: block; width: 100%; font-family: var(--wa-label-font); font-weight: var(--wa-label-weight); font-size: var(--wa-label-font-size); color: var(--wa-label-color); margin-bottom: 0.5rem; padding: 0; }
+.wa-choice-option { display: flex; align-items: center; gap: 0.5rem; font-family: var(--wa-input-font); font-weight: 400; font-size: 0.92rem; color: var(--wa-input-text); margin-bottom: 0.5rem; cursor: pointer; }
 .wa-choice-option:last-child { margin-bottom: 0; }
-.wa-choice-option input[type=radio], .wa-choice-option input[type=checkbox] { width: auto; margin: 0; accent-color: var(--wa-primary); }
-.wa-file-input { border: 1.5px dashed var(--wa-border); border-radius: var(--wa-radius); padding: 1rem; background: var(--wa-bg); display: flex; flex-direction: column; gap: 0.4rem; }
-.wa-file-input input[type=file] { font-family: var(--wa-font-body); font-size: 0.88rem; color: var(--wa-muted); }
+.wa-choice-option input[type=radio], .wa-choice-option input[type=checkbox] { width: auto; margin: 0; accent-color: var(--wa-input-focus); }
+.wa-file-input { border: 1.5px dashed var(--wa-input-border); border-radius: var(--wa-radius); padding: 1rem; background: var(--wa-input-bg); display: flex; flex-direction: column; gap: 0.4rem; }
+.wa-file-input input[type=file] { font-family: var(--wa-input-font); font-size: 0.88rem; color: var(--wa-input-hint); }
 .wa-file-input input[type=file]::file-selector-button {
-  font-family: var(--wa-font-body); font-weight: 500; font-size: 0.85rem; color: #fff; background: var(--wa-primary);
+  font-family: var(--wa-input-font); font-weight: 500; font-size: 0.85rem; color: #fff; background: var(--wa-input-focus);
   border: none; border-radius: 6px; padding: 0.5rem 0.9rem; margin-right: 0.75rem; cursor: pointer; transition: background 0.15s ease;
 }
-.wa-file-input input[type=file]::file-selector-button:hover { background: var(--wa-primary-dark); }
-.wa-file-hint { font-size: 0.78rem; color: var(--wa-muted); }
+.wa-file-input input[type=file]::file-selector-button:hover { background: var(--wa-input-focus-dark); }
+.wa-file-hint { font-size: 0.78rem; color: var(--wa-input-hint); }
 .wa-form-submit {
-  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-button-text);
+  font-family: var(--wa-button-font); font-weight: var(--wa-button-weight); font-size: var(--wa-button-font-size); color: var(--wa-button-text);
   background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
 }
@@ -792,7 +884,7 @@ function alchemy_forms_frontend_css() {
    multi-step nav row (Back/Next/Submit side by side) keeps its own sizing. */
 .wa-form-submit-wrap { margin-top: var(--wa-button-spacing); text-align: var(--wa-button-align); }
 .wa-form-submit-wrap .wa-form-submit { width: var(--wa-button-width); }
-.wa-form-submit:focus-visible { outline: 2px solid var(--wa-accent); outline-offset: 2px; }
+.wa-form-submit:focus-visible { outline: 2px solid var(--wa-button-bg-hover); outline-offset: 2px; }
 .wa-form-submit--loading { color: transparent !important; pointer-events: none; position: relative; }
 .wa-form-submit--loading::after {
   content: ''; position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
@@ -801,28 +893,28 @@ function alchemy_forms_frontend_css() {
 }
 @keyframes wa-form-spin { to { transform: rotate(360deg); } }
 .wa-form-honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-.wa-form-errors { background: var(--wa-error-bg); border: 1px solid var(--wa-error); border-radius: var(--wa-radius); padding: 0.9rem 1.1rem; margin-bottom: 1.5rem; }
+.wa-form-errors { background: #FBEBEA; border: 1px solid #B3261E; border-radius: var(--wa-radius); padding: 0.9rem 1.1rem; margin-bottom: 1.5rem; }
 .wa-form-errors ul { margin: 0; padding-left: 1.1rem; }
-.wa-form-errors li { color: var(--wa-error); font-size: 0.88rem; }
+.wa-form-errors li { color: #B3261E; font-size: 0.88rem; }
 .cf-turnstile { margin-bottom: 1rem; }
-.wa-form-success { background: var(--wa-surface); border: 1px solid var(--wa-border); border-left: 4px solid var(--wa-primary); border-radius: var(--wa-radius); padding: 2rem; }
-.wa-form-success h3 { font-family: var(--wa-font-display); font-size: 1.5rem; font-weight: var(--wa-font-heading-weight); margin: 0 0 0.5rem; color: var(--wa-primary-dark); }
-.wa-form-success p { margin: 0; color: var(--wa-muted); }
+.wa-form-success { background: var(--wa-container-bg); border: 1px solid var(--wa-container-border); border-left: 4px solid var(--wa-success-heading-color); border-radius: var(--wa-radius); padding: 2rem; }
+.wa-form-success h3 { font-family: var(--wa-success-heading-font); font-size: var(--wa-success-heading-size); font-weight: var(--wa-success-heading-weight); margin: 0 0 0.5rem; color: var(--wa-success-heading-color); }
+.wa-form-success p { margin: 0; font-family: var(--wa-success-text-font); font-weight: var(--wa-success-text-weight); font-size: var(--wa-success-text-size); color: var(--wa-success-text-color); }
 .wa-field-html { font-size: 0.95rem; line-height: 1.6; }
 .wa-field-html img, .wa-field-html video { max-width: 100%; height: auto; }
 .wa-field-html p:first-child { margin-top: 0; }
 .wa-field-html p:last-child { margin-bottom: 0; }
 .wa-form-progress { margin-bottom: 1.5rem; }
-.wa-form-progress-label { font-size: 0.82rem; color: var(--wa-muted); margin-bottom: 0.4rem; }
-.wa-form-progress-bar { background: var(--wa-border); border-radius: 999px; height: 6px; overflow: hidden; }
+.wa-form-progress-label { font-size: 0.82rem; color: var(--wa-step-label-color); margin-bottom: 0.4rem; }
+.wa-form-progress-bar { background: var(--wa-input-border); border-radius: 999px; height: 6px; overflow: hidden; }
 .wa-form-progress-fill { background: var(--wa-step-color); height: 100%; width: 0; transition: width 0.25s ease; }
 .wa-form-step { display: none; }
 .wa-form-step.wa-form-step--active { display: block; }
-.wa-form-step-title { font-family: var(--wa-font-display); font-weight: var(--wa-font-heading-weight); font-size: 1.25rem; color: var(--wa-step-color); margin: 0 0 1.25rem; }
+.wa-form-step-title { font-family: var(--wa-step-font); font-weight: var(--wa-step-weight); font-size: var(--wa-step-size); color: var(--wa-step-color); margin: 0 0 1.25rem; }
 .wa-form-step-nav { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-top: var(--wa-button-spacing); }
 .wa-form-step-nav .wa-form-prev,
 .wa-form-step-nav .wa-form-next {
-  font-family: var(--wa-font-body); font-weight: 600; font-size: var(--wa-button-font-size); color: var(--wa-button-text);
+  font-family: var(--wa-button-font); font-weight: var(--wa-button-weight); font-size: var(--wa-button-font-size); color: var(--wa-button-text);
   background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;
   transition: background 0.15s ease, transform 0.1s ease;
 }

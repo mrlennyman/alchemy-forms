@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.3.1
+Stable tag: 2.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,7 +19,7 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 * Drag-and-drop field builder: text, email, phone, URL, number, date, paragraph, dropdown, radio, checkbox, single checkbox, file upload, hidden fields, HTML content blocks, and step breaks
 * Multi-step forms with a progress bar and Back/Next navigation
 * Per-field conditional visibility and per-field placeholder text
-* Per-form styling: colors, corner radius, spacing, independent heading/body/placeholder fonts and weights (curated Google Fonts), button width/alignment, and container padding/border/opacity
+* Per-form styling: the Style panel is organized by component (Title/Label/Inputs/Placeholder/Button/Steps/Container), each with its own colors and, where it renders text, its own independent font, weight, and size (curated Google Fonts)
 * Entries dashboard with CSV export and email notification (multiple recipients supported) on each submission
 * Optional Flodesk integration — sync submissions to an audience via API key, with field mapping and segment assignment
 * One-click import from a Ninja Forms `.nff` export
@@ -30,6 +30,11 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 2.4.0 =
+* The Style panel is redesigned around 7 component tabs — Title, Label, Inputs, Placeholder, Button, Steps, Container — and every tab now owns its own color(s) plus, where it renders text, its own independent Google Font, weight, and font size. Nothing is shared across tabs any more (previously Primary/Border/Muted colors and the Heading/Body fonts applied to several components at once, which made it unclear what a given setting actually affected).
+* Added a "Title" tab for the main form heading, and a "Success message" section on the Container tab — both previously had no dedicated color/font controls at all.
+* Forms saved before this update keep rendering exactly as they did — each new field falls back to its old shared equivalent until the form is next edited and saved, at which point it moves onto the new independent fields.
 
 = 2.3.1 =
 * The builder screen now busts any admin-theme/plugin max-width it inherits so it always uses the full browser width, instead of leaving empty space on the right on wide screens.
