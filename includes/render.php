@@ -27,6 +27,8 @@ function alchemy_forms_render_shortcode($atts) {
     $submit_text = !empty($settings['submit_text']) ? $settings['submit_text'] : __('Submit', 'alchemy-forms');
     $success_msg = !empty($settings['success_msg']) ? $settings['success_msg'] : __('Thanks — your submission has been received.', 'alchemy-forms');
     $turnstile_active = !empty($settings['turnstile_enabled']) && alchemy_forms_turnstile_configured();
+    $payment_config   = (isset($settings['stripe']) && is_array($settings['stripe'])) ? $settings['stripe'] : [];
+    $payment_required = !empty($payment_config['enabled']) && alchemy_forms_stripe_configured();
 
     // Give each field a stable input name derived from its position + label,
     // and stamp which step it belongs to (a form with no page_break fields is
@@ -95,6 +97,44 @@ function alchemy_forms_render_shortcode($atts) {
     $first_error_step  = null; // which step to reopen the form on if validation fails
 
     $posted_this_form = isset($_POST['wa_form_id']) && (int) $_POST['wa_form_id'] === $form_id;
+
+    // Returning from Stripe Checkout — a real browser navigation (GET), not
+    // the AJAX submit path, since the visitor's browser was away at Stripe's
+    // hosted page in between. The token in the URL is form-agnostic (the
+    // same page could embed more than one form), so only act on it once
+    // alchemy_forms_stripe_pending_data() confirms it belongs to this form.
+    if ($payment_required && !empty($_GET['alchemy_forms_token'])) {
+        $token = sanitize_text_field(wp_unslash($_GET['alchemy_forms_token']));
+
+        if (!empty($_GET['alchemy_forms_paid']) && !empty($_GET['session_id'])) {
+            $paid_form_id = get_transient('alchemy_forms_paid_' . $token);
+            if ($paid_form_id !== false && (int) $paid_form_id === $form_id) {
+                $success = true; // already finalized earlier — e.g. the visitor refreshed this page
+            } else {
+                $pending = alchemy_forms_stripe_pending_data($token, $form_id);
+                if ($pending !== null) {
+                    $session = alchemy_forms_stripe_retrieve_session(sanitize_text_field(wp_unslash($_GET['session_id'])));
+                    $paid = is_array($session)
+                        && ($session['payment_status'] ?? '') === 'paid'
+                        && isset($session['client_reference_id'])
+                        && hash_equals($token, (string) $session['client_reference_id']);
+                    if ($paid) {
+                        alchemy_forms_stripe_finalize_token($token);
+                        $success = true;
+                    } else {
+                        $errors[] = __('We could not confirm your payment yet. If you completed checkout, please wait a moment and refresh this page, or contact us.', 'alchemy-forms');
+                    }
+                }
+            }
+        } elseif (!empty($_GET['alchemy_forms_cancelled'])) {
+            $pending = alchemy_forms_stripe_pending_data($token, $form_id);
+            if ($pending !== null) {
+                foreach ($pending['attachment_ids'] as $attachment_id) wp_delete_attachment($attachment_id, true);
+                delete_transient('alchemy_forms_pending_' . $token);
+                $errors[] = __('Payment was cancelled — your submission was not completed.', 'alchemy-forms');
+            }
+        }
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && $posted_this_form) {
         if (!isset($_POST['wa_form_token']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wa_form_token'])), 'wa_form_submit_' . $form_id)) {
@@ -204,35 +244,51 @@ function alchemy_forms_render_shortcode($atts) {
                 }
             }
 
-            if (empty($errors)) {
-                alchemy_forms_save_entry($form_id, $entry_data);
+            if (empty($errors) && $payment_required) {
+                $amount_cents = alchemy_forms_stripe_resolve_amount($payment_config, isset($_POST['wa_payment_amount']) ? wp_unslash($_POST['wa_payment_amount']) : null);
+                if ($amount_cents === null) {
+                    $errors[] = __('Please enter a valid payment amount.', 'alchemy-forms');
+                    foreach ($attachment_ids as $attachment_id) wp_delete_attachment($attachment_id, true);
+                } else {
+                    $currency = !empty($payment_config['currency']) ? $payment_config['currency'] : 'usd';
+                    $token    = wp_generate_password(32, false);
+                    set_transient('alchemy_forms_pending_' . $token, [
+                        'form_id'          => $form_id,
+                        'entry_data'       => $entry_data,
+                        'values_by_uid'    => $values_by_uid,
+                        'attachment_paths' => $attachment_paths,
+                        'attachment_ids'   => $attachment_ids,
+                        'amount_cents'     => $amount_cents,
+                        'currency'         => $currency,
+                    ], DAY_IN_SECONDS);
 
-                $body = sprintf(__("New submission — %s:\n\n", 'alchemy-forms'), $form->post_title);
-                foreach ($entry_data as $label => $val) {
-                    $body .= $label . ': ' . $val . "\n";
+                    $page_url = isset($_POST['wa_page_url']) ? esc_url_raw(wp_unslash($_POST['wa_page_url'])) : '';
+                    if ($page_url === '') $page_url = wp_get_referer();
+                    if (!$page_url) $page_url = home_url('/');
+
+                    $email_field    = isset($payment_config['email_field']) ? $payment_config['email_field'] : '';
+                    $customer_email = ($email_field !== '' && !empty($values_by_uid[$email_field]) && is_email($values_by_uid[$email_field])) ? $values_by_uid[$email_field] : '';
+
+                    $session = alchemy_forms_stripe_create_checkout_session([
+                        'amount_cents'   => $amount_cents,
+                        'currency'       => $currency,
+                        'description'    => !empty($payment_config['description']) ? $payment_config['description'] : $form->post_title,
+                        'token'          => $token,
+                        'return_url'     => $page_url,
+                        'customer_email' => $customer_email,
+                    ]);
+
+                    if ($session && !empty($session['url'])) {
+                        alchemy_forms_stripe_pending_redirect($session['url']);
+                    } else {
+                        delete_transient('alchemy_forms_pending_' . $token);
+                        foreach ($attachment_ids as $attachment_id) wp_delete_attachment($attachment_id, true);
+                        $errors[] = __('We could not start the payment process — please try again in a moment.', 'alchemy-forms');
+                    }
                 }
-                $entries_url = admin_url('edit.php?post_type=wa_form&page=wa-form-entries&form_id=' . $form_id);
-                $body .= "\n" . __('View all entries:', 'alchemy-forms') . ' ' . $entries_url . "\n";
-
-                wp_mail(
-                    $recipient,
-                    sprintf(__('New submission: %s', 'alchemy-forms'), $form->post_title),
-                    $body,
-                    [],
-                    $attachment_paths
-                );
-                // Entry is stored either way — email failure shouldn't lose the submission.
+            } elseif (empty($errors)) {
+                alchemy_forms_finalize_submission($form_id, $form->post_title, $entry_data, $values_by_uid, $attachment_paths, $settings, $recipient);
                 $success = true;
-
-                if (!empty($settings['integrations']['flodesk']['enabled'])) {
-                    alchemy_forms_send_to_flodesk($settings['integrations']['flodesk'], $values_by_uid);
-                }
-                if (!empty($settings['integrations']['aweber']['enabled'])) {
-                    alchemy_forms_send_to_aweber($settings['integrations']['aweber'], $values_by_uid);
-                }
-                if (!empty($settings['integrations']['mailchimp']['enabled'])) {
-                    alchemy_forms_send_to_mailchimp($settings['integrations']['mailchimp'], $values_by_uid);
-                }
             } elseif ($attachment_ids) {
                 // Files were uploaded and attached before a later field failed
                 // validation — don't leave any of them orphaned in the Media Library.
@@ -241,6 +297,25 @@ function alchemy_forms_render_shortcode($atts) {
                 }
             }
         }
+    }
+
+    // A payment-required submission that passed validation doesn't finish
+    // here — it needs the visitor's browser to actually navigate to Stripe,
+    // which a fetch() response can't do on its own. Render a minimal
+    // redirecting placeholder; alchemy_forms_ajax_submit() also reads this
+    // same URL back out to send as JSON so the AJAX path can redirect via
+    // window.location instead of relying on a <script> tag that a fetch-based
+    // HTML swap would never execute.
+    $stripe_redirect_url = alchemy_forms_stripe_pending_redirect();
+    if ($stripe_redirect_url !== '') {
+        ob_start();
+        ?>
+        <div class="wa-form-wrap" data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>">
+            <p><?php esc_html_e('Redirecting you to payment…', 'alchemy-forms'); ?></p>
+            <script>window.location.href = <?php echo wp_json_encode($stripe_redirect_url); ?>;</script>
+        </div>
+        <?php
+        return ob_get_clean();
     }
 
     ob_start();
@@ -286,6 +361,8 @@ function alchemy_forms_render_shortcode($atts) {
                         <?php foreach ((isset($steps[0]) ? $steps[0] : []) as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
                     </div>
 
+                    <?php if ($payment_required) : alchemy_forms_render_payment_field($payment_config, $form_id); endif; ?>
+
                     <div class="wa-form-submit-wrap">
                         <?php if ($turnstile_active) : ?>
                             <div class="cf-turnstile" data-sitekey="<?php echo esc_attr(get_option('alchemy_forms_turnstile_site_key', '')); ?>"></div>
@@ -306,6 +383,7 @@ function alchemy_forms_render_shortcode($atts) {
                             <div class="wa-form-grid">
                                 <?php foreach ($step_fields as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
                             </div>
+                            <?php if ($payment_required && $step_index === $step_count - 1) : alchemy_forms_render_payment_field($payment_config, $form_id); endif; ?>
                             <?php if ($turnstile_active && $step_index === $step_count - 1) : ?>
                                 <div class="cf-turnstile" data-sitekey="<?php echo esc_attr(get_option('alchemy_forms_turnstile_site_key', '')); ?>"></div>
                             <?php endif; ?>
@@ -327,6 +405,70 @@ function alchemy_forms_render_shortcode($atts) {
     </div>
     <?php
     return ob_get_clean();
+}
+
+/**
+ * Renders the auto-injected payment field near the submit button, the same
+ * way the Turnstile widget is auto-injected — not part of the field builder,
+ * since it's tied to the form-level Payment settings, not an individual
+ * field. A fixed-price form shows the amount as read-only text (a hidden
+ * field carries the actual value only so the visitor sees what they're
+ * about to pay — the server never trusts this value, see
+ * alchemy_forms_stripe_resolve_amount()); a variable-price form shows an
+ * editable amount input instead.
+ */
+function alchemy_forms_render_payment_field($payment_config, $form_id) {
+    $currency = !empty($payment_config['currency']) ? $payment_config['currency'] : 'usd';
+    $label    = !empty($payment_config['description']) ? $payment_config['description'] : __('Amount', 'alchemy-forms');
+    $id       = 'wa-' . $form_id . '-payment-amount';
+    ?>
+    <div class="wa-field wa-field--full wa-payment-field">
+        <?php if (($payment_config['amount_type'] ?? 'fixed') === 'variable') : ?>
+            <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?> <span class="wa-req">*</span></label>
+            <input type="number" id="<?php echo esc_attr($id); ?>" name="wa_payment_amount" min="<?php echo esc_attr($payment_config['min_amount'] ?? 0); ?>" step="0.01" value="<?php echo esc_attr($payment_config['default_amount'] ?? ''); ?>" required>
+        <?php else : ?>
+            <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></label>
+            <p id="<?php echo esc_attr($id); ?>" class="wa-payment-fixed-amount"><?php echo esc_html(alchemy_forms_stripe_format_money($payment_config['fixed_amount'] ?? 0, $currency)); ?></p>
+            <input type="hidden" name="wa_payment_amount" value="<?php echo esc_attr($payment_config['fixed_amount'] ?? 0); ?>">
+        <?php endif; ?>
+    </div>
+    <?php
+}
+
+/**
+ * Saves the entry, sends the notification email, and syncs any enabled
+ * email-marketing integration — the finish line every successful submission
+ * reaches, whether that happens immediately (no payment required) or later,
+ * once Stripe confirms payment (see alchemy_forms_stripe_finalize_token()).
+ */
+function alchemy_forms_finalize_submission($form_id, $form_title, $entry_data, $values_by_uid, $attachment_paths, $settings, $recipient) {
+    alchemy_forms_save_entry($form_id, $entry_data);
+
+    $body = sprintf(__("New submission — %s:\n\n", 'alchemy-forms'), $form_title);
+    foreach ($entry_data as $label => $val) {
+        $body .= $label . ': ' . $val . "\n";
+    }
+    $entries_url = admin_url('edit.php?post_type=wa_form&page=wa-form-entries&form_id=' . $form_id);
+    $body .= "\n" . __('View all entries:', 'alchemy-forms') . ' ' . $entries_url . "\n";
+
+    wp_mail(
+        $recipient,
+        sprintf(__('New submission: %s', 'alchemy-forms'), $form_title),
+        $body,
+        [],
+        $attachment_paths
+    );
+    // Entry is stored either way — email failure shouldn't lose the submission.
+
+    if (!empty($settings['integrations']['flodesk']['enabled'])) {
+        alchemy_forms_send_to_flodesk($settings['integrations']['flodesk'], $values_by_uid);
+    }
+    if (!empty($settings['integrations']['aweber']['enabled'])) {
+        alchemy_forms_send_to_aweber($settings['integrations']['aweber'], $values_by_uid);
+    }
+    if (!empty($settings['integrations']['mailchimp']['enabled'])) {
+        alchemy_forms_send_to_mailchimp($settings['integrations']['mailchimp'], $values_by_uid);
+    }
 }
 
 /**
@@ -359,6 +501,15 @@ function alchemy_forms_ajax_submit() {
     ]);
 
     if ($embed_post_id) wp_reset_postdata();
+
+    // A payment-required submission needs a real browser navigation to
+    // Stripe, which fetch() can't do — send the URL back explicitly so
+    // frontend.js can redirect via window.location instead of trying (and
+    // failing) to run a <script> tag from injected HTML.
+    $redirect = alchemy_forms_stripe_pending_redirect();
+    if ($redirect !== '') {
+        wp_send_json_success(['redirect' => $redirect]);
+    }
 
     wp_send_json_success(['html' => $html]);
 }
@@ -876,6 +1027,8 @@ function alchemy_forms_frontend_css() {
 }
 .wa-file-input input[type=file]::file-selector-button:hover { background: var(--wa-input-focus-dark); }
 .wa-file-hint { font-size: 0.78rem; color: var(--wa-input-hint); }
+.wa-payment-field { margin-top: var(--wa-field-gap); }
+.wa-payment-fixed-amount { margin: 0; padding: var(--wa-input-padding); font-size: 1.05rem; font-weight: 600; font-family: var(--wa-input-font); color: var(--wa-input-text); background: var(--wa-input-bg); border: 1px solid var(--wa-input-border); border-radius: var(--wa-radius); }
 .wa-form-submit {
   font-family: var(--wa-button-font); font-weight: var(--wa-button-weight); font-size: var(--wa-button-font-size); color: var(--wa-button-text);
   background: var(--wa-button-bg); border: none; border-radius: var(--wa-radius); padding: var(--wa-button-padding); cursor: pointer;

@@ -225,7 +225,7 @@ jQuery(function ($) {
     // Usage fields stay part of the form and still get submitted on save.
     var $sidebar = $('<div class="wa-sidebar-panel"></div>').insertAfter('#wa-style-panel-slot');
 
-    ['#submitdiv', '#wa_form_settings', '#wa_form_integrations', '#wa_form_usage'].forEach(function (selector) {
+    ['#submitdiv', '#wa_form_settings', '#wa_form_integrations', '#wa_form_payment', '#wa_form_usage'].forEach(function (selector) {
         var $box = $(selector);
         if ($box.length) $sidebar.append($box);
     });
@@ -275,6 +275,19 @@ jQuery(function ($) {
         }).fail(function () {
             $status.text('Request failed — please try again.');
         });
+    });
+
+    /* -------------------------------------------------------------------
+     * Payment box — show/hide the options once "Require payment" is
+     * checked, and swap between the fixed/variable amount rows.
+     * ---------------------------------------------------------------- */
+    $('#wa-stripe-enabled').on('change', function () {
+        $('#wa-stripe-options').toggle(this.checked);
+    });
+    $('#wa_stripe_amount_type').on('change', function () {
+        var isFixed = $(this).val() === 'fixed';
+        $('#wa-stripe-fixed-amount-row').toggle(isFixed);
+        $('#wa-stripe-variable-amount-rows').toggle(!isFixed);
     });
 
     /* -------------------------------------------------------------------

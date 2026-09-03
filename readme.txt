@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.5.0
+Stable tag: 3.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,7 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 * Entries dashboard with CSV export and email notification (any number of recipients supported) on each submission
 * Optional email marketing sync on submission — Flodesk, AWeber, or Mailchimp, with field mapping and audience/list/segment assignment
 * Optional Cloudflare Turnstile spam-challenge verification, configured once for the whole site
+* Optional Stripe payment collection — a fixed price or a visitor-entered amount, via Stripe's hosted Checkout page (card details never touch this site)
 * One-click import from a Ninja Forms `.nff` export
 * Spam honeypot and nonce-verified submissions
 
@@ -31,6 +32,10 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 3.0.0 =
+* Added Stripe payment collection. Turn it on per form in the new Payment box: a fixed price or let the visitor enter their own amount, in USD/NZD/AUD/GBP/EUR/CAD. Uses Stripe's own hosted Checkout page — card details never reach this site. A submission that requires payment holds its data until payment is confirmed (both by the visitor's return to the page and by a webhook, so a payment is still recorded even if they close the tab before coming back), then saves the entry, sends the notification email, and syncs any enabled email-marketing integration exactly like a normal submission — with the amount paid added to the entry.
+* Connect Stripe once under Alchemy Forms → Settings (a Secret Key, plus a Webhook Signing Secret for the webhook URL shown there).
 
 = 2.5.0 =
 * Added a Mailchimp integration — a third Email Marketing tab alongside Flodesk and AWeber. Connect with an API key, pick an audience, map email/first/last name fields.

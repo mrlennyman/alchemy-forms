@@ -177,11 +177,21 @@
             formData.append('action', 'alchemy_forms_submit');
             formData.append('wa_form_title', wrap.getAttribute('data-title') || '');
             formData.append('wa_embed_post_id', wrap.getAttribute('data-embed-post-id') || '0');
+            formData.append('wa_page_url', window.location.href);
 
             fetch(ajaxUrl, { method: 'POST', body: formData, credentials: 'same-origin' })
                 .then(function (res) { return res.json(); })
                 .then(function (json) {
-                    if (!json || !json.success || !json.data || !json.data.html) {
+                    if (!json || !json.success || !json.data) {
+                        throw new Error('bad response');
+                    }
+                    if (json.data.redirect) {
+                        // A payment-required submission — leave this page for
+                        // Stripe's hosted checkout instead of swapping in new markup.
+                        window.location.href = json.data.redirect;
+                        return;
+                    }
+                    if (!json.data.html) {
                         throw new Error('bad response');
                     }
                     var temp = document.createElement('div');

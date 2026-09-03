@@ -34,6 +34,14 @@ add_action('admin_init', function () {
         'sanitize_callback' => 'sanitize_text_field',
         'default'           => '',
     ]);
+    register_setting('alchemy_forms_settings', 'alchemy_forms_stripe_secret_key', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default'           => '',
+    ]);
+    register_setting('alchemy_forms_settings', 'alchemy_forms_stripe_webhook_secret', [
+        'sanitize_callback' => 'sanitize_text_field',
+        'default'           => '',
+    ]);
 });
 
 function alchemy_forms_settings_page() {
@@ -87,6 +95,37 @@ function alchemy_forms_settings_page() {
             </table>
             <p class="description">
                 <?php esc_html_e('Create an app at AWeber\'s developer console to get a Client ID and Secret, then save this page before connecting. One connection covers this whole site — turn AWeber sync on for individual forms under that form\'s Email Marketing tab.', 'alchemy-forms'); ?>
+            </p>
+
+            <h2>
+                <?php esc_html_e('Stripe', 'alchemy-forms'); ?>
+                <?php if (alchemy_forms_stripe_configured()) : ?>
+                    <?php if (alchemy_forms_stripe_test_mode()) : ?>
+                        <span class="description" style="font-weight:600;color:#996800;"><?php esc_html_e('(Test mode)', 'alchemy-forms'); ?></span>
+                    <?php else : ?>
+                        <span class="description" style="font-weight:600;color:#0a7d3c;"><?php esc_html_e('(Live mode)', 'alchemy-forms'); ?></span>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </h2>
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><label for="alchemy_forms_stripe_secret_key"><?php esc_html_e('Secret Key', 'alchemy-forms'); ?></label></th>
+                    <td><input type="text" id="alchemy_forms_stripe_secret_key" name="alchemy_forms_stripe_secret_key" value="<?php echo esc_attr(get_option('alchemy_forms_stripe_secret_key', '')); ?>" class="regular-text" autocomplete="off" placeholder="sk_test_… or sk_live_…"></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="alchemy_forms_stripe_webhook_secret"><?php esc_html_e('Webhook Signing Secret', 'alchemy-forms'); ?></label></th>
+                    <td><input type="text" id="alchemy_forms_stripe_webhook_secret" name="alchemy_forms_stripe_webhook_secret" value="<?php echo esc_attr(get_option('alchemy_forms_stripe_webhook_secret', '')); ?>" class="regular-text" autocomplete="off" placeholder="whsec_…"></td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php esc_html_e('Webhook URL', 'alchemy-forms'); ?></th>
+                    <td>
+                        <input type="text" readonly value="<?php echo esc_attr(alchemy_forms_stripe_webhook_url()); ?>" class="regular-text" onclick="this.select();">
+                        <p class="description"><?php esc_html_e('Add this as a webhook endpoint in your Stripe Dashboard, listening for the "checkout.session.completed" event, then paste its signing secret above.', 'alchemy-forms'); ?></p>
+                    </td>
+                </tr>
+            </table>
+            <p class="description">
+                <?php esc_html_e('Get your Secret Key from the Stripe Dashboard under Developers → API keys. Use a test-mode key while you\'re setting things up — nothing is charged for real until you switch to a live key. One key covers this whole site — turn payment on for individual forms under that form\'s Payment box.', 'alchemy-forms'); ?>
             </p>
             <?php submit_button(); ?>
         </form>

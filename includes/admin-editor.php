@@ -60,6 +60,7 @@ add_action('add_meta_boxes', function () {
     add_meta_box('wa_form_settings', __('Form Settings', 'alchemy-forms'), 'alchemy_forms_settings_metabox', 'wa_form', 'side', 'default');
     add_meta_box('wa_form_style', __('Style', 'alchemy-forms'), 'alchemy_forms_style_metabox', 'wa_form', 'side', 'default');
     add_meta_box('wa_form_integrations', __('Email Marketing', 'alchemy-forms'), 'alchemy_forms_integrations_metabox', 'wa_form', 'side', 'low');
+    add_meta_box('wa_form_payment', __('Payment', 'alchemy-forms'), 'alchemy_forms_payment_metabox', 'wa_form', 'side', 'low');
     add_meta_box('wa_form_usage', __('Usage', 'alchemy-forms'), 'alchemy_forms_usage_metabox', 'wa_form', 'side', 'low');
 });
 
@@ -617,11 +618,13 @@ function alchemy_forms_style_metabox($post) {
     <?php
 }
 
-function alchemy_forms_integrations_metabox($post) {
-    // Fields the visitor can actually fill in — same exclusion as everywhere else
-    // that offers a "pick one of this form's fields" dropdown. Shared by every
-    // provider tab below.
-    $form_fields = get_post_meta($post->ID, '_wa_form_fields', true);
+/**
+ * Fields the visitor can actually fill in — same exclusion everywhere a
+ * metabox offers a "pick one of this form's fields" dropdown (Email
+ * Marketing's field mapping, Payment's customer-email field).
+ */
+function alchemy_forms_field_picker($post_id) {
+    $form_fields = get_post_meta($post_id, '_wa_form_fields', true);
     if (!is_array($form_fields)) $form_fields = [];
     $noninput_types = alchemy_forms_noninput_field_types();
     $picker = [];
@@ -630,6 +633,11 @@ function alchemy_forms_integrations_metabox($post) {
         if (isset($f['type']) && in_array($f['type'], $noninput_types, true)) continue;
         $picker[] = ['uid' => $f['uid'], 'label' => $f['label']];
     }
+    return $picker;
+}
+
+function alchemy_forms_integrations_metabox($post) {
+    $picker = alchemy_forms_field_picker($post->ID);
     ?>
     <div class="wa-tabs">
         <button type="button" class="wa-tab-btn wa-tab-btn--active" data-tab="flodesk"><?php esc_html_e('Flodesk', 'alchemy-forms'); ?></button>
@@ -903,6 +911,95 @@ function alchemy_forms_mailchimp_tab($post, $picker) {
     <?php
 }
 
+function alchemy_forms_payment_metabox($post) {
+    if (!alchemy_forms_stripe_configured()) {
+        ?>
+        <p class="description">
+            <?php
+            printf(
+                /* translators: %s: link to the Alchemy Forms Settings page */
+                esc_html__('Stripe isn\'t connected yet. Add a Secret Key under %s, then come back here to require payment on this form.', 'alchemy-forms'),
+                '<a href="' . esc_url(admin_url('edit.php?post_type=wa_form&page=wa-form-settings')) . '">' . esc_html__('Alchemy Forms → Settings', 'alchemy-forms') . '</a>'
+            );
+            ?>
+        </p>
+        <?php
+        return;
+    }
+
+    $settings = get_post_meta($post->ID, '_wa_form_settings', true);
+    $stripe   = (is_array($settings) && isset($settings['stripe']) && is_array($settings['stripe'])) ? $settings['stripe'] : [];
+    $picker   = alchemy_forms_field_picker($post->ID);
+
+    $enabled      = !empty($stripe['enabled']);
+    $amount_type  = (isset($stripe['amount_type']) && $stripe['amount_type'] === 'variable') ? 'variable' : 'fixed';
+    $fixed_amount = isset($stripe['fixed_amount']) ? $stripe['fixed_amount'] : '';
+    $min_amount   = isset($stripe['min_amount']) ? $stripe['min_amount'] : '';
+    $default_amount = isset($stripe['default_amount']) ? $stripe['default_amount'] : '';
+    $currency     = isset($stripe['currency']) ? $stripe['currency'] : 'usd';
+    $description  = isset($stripe['description']) ? $stripe['description'] : '';
+    $email_field  = isset($stripe['email_field']) ? $stripe['email_field'] : '';
+    $currencies   = alchemy_forms_stripe_currencies();
+    ?>
+    <p>
+        <label>
+            <input type="checkbox" id="wa-stripe-enabled" name="wa_settings[stripe][enabled]" value="1" <?php checked($enabled); ?>>
+            <?php esc_html_e('Require payment (via Stripe) before this submission is accepted', 'alchemy-forms'); ?>
+        </label>
+        <?php if (alchemy_forms_stripe_test_mode()) : ?>
+            <br><span class="description" style="color:#996800;"><?php esc_html_e('Stripe is in test mode — no real charges will be made.', 'alchemy-forms'); ?></span>
+        <?php endif; ?>
+    </p>
+    <div id="wa-stripe-options" <?php if (!$enabled) : ?>style="display:none;"<?php endif; ?>>
+        <p>
+            <label for="wa_stripe_description"><?php esc_html_e('Description', 'alchemy-forms'); ?></label>
+            <input type="text" id="wa_stripe_description" name="wa_settings[stripe][description]" value="<?php echo esc_attr($description); ?>" class="widefat" placeholder="<?php echo esc_attr($post->post_title); ?>">
+            <span class="description"><?php esc_html_e('Shown as the field label and on Stripe\'s checkout page. Defaults to the form title.', 'alchemy-forms'); ?></span>
+        </p>
+        <p>
+            <label for="wa_stripe_currency"><?php esc_html_e('Currency', 'alchemy-forms'); ?></label>
+            <select id="wa_stripe_currency" name="wa_settings[stripe][currency]" class="widefat">
+                <?php foreach ($currencies as $key => $label) : ?>
+                    <option value="<?php echo esc_attr($key); ?>" <?php selected($currency, $key); ?>><?php echo esc_html($label); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </p>
+        <p>
+            <label for="wa_stripe_amount_type"><?php esc_html_e('Amount', 'alchemy-forms'); ?></label>
+            <select id="wa_stripe_amount_type" name="wa_settings[stripe][amount_type]" class="widefat">
+                <option value="fixed" <?php selected($amount_type, 'fixed'); ?>><?php esc_html_e('Fixed amount', 'alchemy-forms'); ?></option>
+                <option value="variable" <?php selected($amount_type, 'variable'); ?>><?php esc_html_e('Visitor enters an amount', 'alchemy-forms'); ?></option>
+            </select>
+        </p>
+        <p id="wa-stripe-fixed-amount-row" <?php if ($amount_type !== 'fixed') : ?>style="display:none;"<?php endif; ?>>
+            <label for="wa_stripe_fixed_amount"><?php esc_html_e('Amount', 'alchemy-forms'); ?></label>
+            <input type="number" id="wa_stripe_fixed_amount" name="wa_settings[stripe][fixed_amount]" value="<?php echo esc_attr($fixed_amount); ?>" min="0" step="0.01" class="small-text">
+        </p>
+        <div id="wa-stripe-variable-amount-rows" <?php if ($amount_type !== 'variable') : ?>style="display:none;"<?php endif; ?>>
+            <p>
+                <label for="wa_stripe_min_amount"><?php esc_html_e('Minimum amount', 'alchemy-forms'); ?></label>
+                <input type="number" id="wa_stripe_min_amount" name="wa_settings[stripe][min_amount]" value="<?php echo esc_attr($min_amount); ?>" min="0" step="0.01" class="small-text">
+            </p>
+            <p>
+                <label for="wa_stripe_default_amount"><?php esc_html_e('Suggested amount (optional)', 'alchemy-forms'); ?></label>
+                <input type="number" id="wa_stripe_default_amount" name="wa_settings[stripe][default_amount]" value="<?php echo esc_attr($default_amount); ?>" min="0" step="0.01" class="small-text">
+                <span class="description"><?php esc_html_e('Pre-fills the amount field — the visitor can still change it.', 'alchemy-forms'); ?></span>
+            </p>
+        </div>
+        <p>
+            <label for="wa_stripe_email_field"><?php esc_html_e('Email field (optional)', 'alchemy-forms'); ?></label>
+            <select id="wa_stripe_email_field" name="wa_settings[stripe][email_field]" class="widefat">
+                <option value=""><?php esc_html_e('— None —', 'alchemy-forms'); ?></option>
+                <?php foreach ($picker as $p) : ?>
+                    <option value="<?php echo esc_attr($p['uid']); ?>" <?php selected($email_field, $p['uid']); ?>><?php echo esc_html($p['label']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <span class="description"><?php esc_html_e('Pre-fills the email address on Stripe\'s checkout page.', 'alchemy-forms'); ?></span>
+        </p>
+    </div>
+    <?php
+}
+
 function alchemy_forms_usage_metabox($post) {
     ?>
     <p><?php esc_html_e('Add this form to any page or Beaver Builder text module:', 'alchemy-forms'); ?></p>
@@ -1127,6 +1224,19 @@ add_action('save_post_wa_form', function ($post_id) {
                 'first_name_field' => isset($mailchimp_in['first_name_field']) ? sanitize_text_field($mailchimp_in['first_name_field']) : '',
                 'last_name_field'  => isset($mailchimp_in['last_name_field']) ? sanitize_text_field($mailchimp_in['last_name_field']) : '',
             ],
+        ];
+
+        $stripe_in = (isset($s['stripe']) && is_array($s['stripe'])) ? $s['stripe'] : [];
+        $currency_keys = array_keys(alchemy_forms_stripe_currencies());
+        $settings['stripe'] = [
+            'enabled'         => (!empty($stripe_in['enabled']) && alchemy_forms_stripe_configured()) ? 1 : 0,
+            'amount_type'     => (isset($stripe_in['amount_type']) && $stripe_in['amount_type'] === 'variable') ? 'variable' : 'fixed',
+            'fixed_amount'    => isset($stripe_in['fixed_amount']) ? max(0, (float) $stripe_in['fixed_amount']) : 0,
+            'min_amount'      => isset($stripe_in['min_amount']) ? max(0, (float) $stripe_in['min_amount']) : 0,
+            'default_amount'  => isset($stripe_in['default_amount']) ? max(0, (float) $stripe_in['default_amount']) : '',
+            'currency'        => (isset($stripe_in['currency']) && in_array($stripe_in['currency'], $currency_keys, true)) ? $stripe_in['currency'] : 'usd',
+            'description'     => isset($stripe_in['description']) ? sanitize_text_field($stripe_in['description']) : '',
+            'email_field'     => isset($stripe_in['email_field']) ? sanitize_text_field($stripe_in['email_field']) : '',
         ];
     }
     update_post_meta($post_id, '_wa_form_settings', $settings);
