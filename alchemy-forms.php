@@ -3,7 +3,7 @@
  * Plugin Name: Alchemy Forms
  * Plugin URI:  https://websitealchemy.com
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     3.0.0
+ * Version:     3.0.1
  * Author:      Website Alchemy
  * Author URI:  https://websitealchemy.com
  * License:     GPL-2.0-or-later
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('ALCHEMY_FORMS_VERSION', '3.0.0');
+define('ALCHEMY_FORMS_VERSION', '3.0.1');
 define('ALCHEMY_FORMS_DIR', plugin_dir_path(__FILE__));
 define('ALCHEMY_FORMS_URL', plugin_dir_url(__FILE__));
 
@@ -235,6 +235,7 @@ function alchemy_forms_google_fonts() {
         'Josefin Sans'      => ['label' => 'Josefin Sans', 'family' => "'Josefin Sans', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
         'Space Grotesk'     => ['label' => 'Space Grotesk', 'family' => "'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
         'Oswald'            => ['label' => 'Oswald', 'family' => "'Oswald', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
+        'Krub'              => ['label' => 'Krub', 'family' => "'Krub', -apple-system, BlinkMacSystemFont, sans-serif", 'google' => true],
     ];
 }
 
@@ -383,6 +384,7 @@ function alchemy_forms_style_defaults() {
         'input_bg_color'       => '#F6F8F3',
         'input_text_color'     => '#1F2A23',
         'input_focus_color'    => '#2F4F3E',
+        'upload_hover_color'   => '#22392B',
         'input_font'           => 'Inter',
         'input_weight'         => 400,
         'input_font_size'      => 15,
@@ -418,6 +420,7 @@ function alchemy_forms_style_defaults() {
 
         // Container (the outer box) and the success message it shows on submit
         'radius'                => 10,
+        'container_width'       => 720,
         'container_bg_color'    => '#FFFFFF',
         'container_bg_opacity'  => 100,
         'container_border_color' => '#DCE3D9',

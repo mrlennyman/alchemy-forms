@@ -736,6 +736,7 @@ function alchemy_forms_resolve_style($style_settings) {
     $input_focus     = alchemy_forms_resolve_style_color($style_settings, 'input_focus_color', $d, 'primary_color');
     [$ifr, $ifg, $ifb] = alchemy_forms_hex_to_rgb($input_focus);
     $input_focus_shadow = sprintf('rgba(%d, %d, %d, 0.15)', $ifr, $ifg, $ifb);
+    $upload_hover    = alchemy_forms_resolve_style_color($style_settings, 'upload_hover_color', $d);
     $input_font_key  = alchemy_forms_resolve_style_font($style_settings, 'input_font', $ld, $google_fonts);
     $input_weight    = alchemy_forms_resolve_style_weight($style_settings, 'input_weight', $ld, $weight_opts);
     $input_font_size = alchemy_forms_resolve_style_px($style_settings, 'input_font_size', $d);
@@ -778,6 +779,7 @@ function alchemy_forms_resolve_style($style_settings) {
     $step_label_color = alchemy_forms_resolve_style_color($style_settings, 'step_label_color', $d, 'muted_color');
 
     $radius             = alchemy_forms_resolve_style_px($style_settings, 'radius', $d);
+    $container_width    = alchemy_forms_resolve_style_px($style_settings, 'container_width', $d, 200, 1600);
     $container_bg       = alchemy_forms_resolve_style_color($style_settings, 'container_bg_color', $d);
     $container_opacity  = alchemy_forms_resolve_style_px($style_settings, 'container_bg_opacity', $d, 0, 100);
     $container_border   = alchemy_forms_resolve_style_color($style_settings, 'container_border_color', $d, 'border_color');
@@ -823,8 +825,8 @@ function alchemy_forms_resolve_style($style_settings) {
         '--wa-input-bg'      => $input_bg,
         '--wa-input-text'    => $input_text,
         '--wa-input-focus'   => $input_focus,
-        '--wa-input-focus-dark' => alchemy_forms_darken_hex($input_focus, 0.22),
         '--wa-input-focus-shadow' => $input_focus_shadow,
+        '--wa-upload-hover'  => $upload_hover,
         '--wa-input-font'    => $google_fonts[$input_font_key]['family'],
         '--wa-input-weight'  => $input_weight,
         '--wa-input-size'    => $input_font_size . 'px',
@@ -857,6 +859,7 @@ function alchemy_forms_resolve_style($style_settings) {
         '--wa-step-label-color' => $step_label_color,
 
         '--wa-radius'                 => $radius . 'px',
+        '--wa-container-width'        => $container_width . 'px',
         '--wa-container-bg'           => $container_rgba,
         '--wa-container-border'       => $container_border,
         '--wa-container-border-width' => $container_border_width . 'px',
@@ -941,8 +944,8 @@ function alchemy_forms_frontend_css() {
   --wa-input-bg: #F6F8F3;
   --wa-input-text: #1F2A23;
   --wa-input-focus: #2F4F3E;
-  --wa-input-focus-dark: #22392B;
   --wa-input-focus-shadow: rgba(47,79,62,0.15);
+  --wa-upload-hover: #22392B;
   --wa-input-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --wa-input-weight: 400;
   --wa-input-size: 15px;
@@ -972,6 +975,7 @@ function alchemy_forms_frontend_css() {
   --wa-step-label-color: #5B6B60;
   --wa-radius: 10px;
   --wa-container-bg: #FFFFFF;
+  --wa-container-width: 720px;
   --wa-container-border: #DCE3D9;
   --wa-container-border-width: 1px;
   --wa-container-padding: 40px;
@@ -984,7 +988,7 @@ function alchemy_forms_frontend_css() {
   --wa-success-text-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --wa-success-text-weight: 400;
   --wa-success-text-size: 15px;
-  max-width: 720px;
+  max-width: var(--wa-container-width);
   margin: 0 auto;
   font-family: var(--wa-input-font);
   color: var(--wa-input-text);
@@ -1025,7 +1029,7 @@ function alchemy_forms_frontend_css() {
   font-family: var(--wa-input-font); font-weight: 500; font-size: 0.85rem; color: #fff; background: var(--wa-input-focus);
   border: none; border-radius: 6px; padding: 0.5rem 0.9rem; margin-right: 0.75rem; cursor: pointer; transition: background 0.15s ease;
 }
-.wa-file-input input[type=file]::file-selector-button:hover { background: var(--wa-input-focus-dark); }
+.wa-file-input input[type=file]::file-selector-button:hover { background: var(--wa-upload-hover); }
 .wa-file-hint { font-size: 0.78rem; color: var(--wa-input-hint); }
 .wa-payment-field { margin-top: var(--wa-field-gap); }
 .wa-payment-fixed-amount { margin: 0; padding: var(--wa-input-padding); font-size: 1.05rem; font-weight: 600; font-family: var(--wa-input-font); color: var(--wa-input-text); background: var(--wa-input-bg); border: 1px solid var(--wa-input-border); border-radius: var(--wa-radius); }

@@ -447,6 +447,7 @@ function alchemy_forms_style_metabox($post) {
     $input_bg        = alchemy_forms_resolve_style_color($style, 'input_bg_color', $d);
     $input_text      = alchemy_forms_resolve_style_color($style, 'input_text_color', $d);
     $input_focus     = alchemy_forms_resolve_style_color($style, 'input_focus_color', $d, 'primary_color');
+    $upload_hover    = alchemy_forms_resolve_style_color($style, 'upload_hover_color', $d);
     $input_font      = alchemy_forms_resolve_style_font($style, 'input_font', $ld, $google_fonts);
     $input_weight    = alchemy_forms_resolve_style_weight($style, 'input_weight', $ld, $weight_opts);
     $input_font_size = alchemy_forms_resolve_style_px($style, 'input_font_size', $d);
@@ -482,6 +483,7 @@ function alchemy_forms_style_metabox($post) {
     $step_label_color = alchemy_forms_resolve_style_color($style, 'step_label_color', $d, 'muted_color');
 
     $radius              = alchemy_forms_resolve_style_px($style, 'radius', $d);
+    $container_width     = alchemy_forms_resolve_style_px($style, 'container_width', $d, 200, 1600);
     $container_bg        = alchemy_forms_resolve_style_color($style, 'container_bg_color', $d);
     $container_opacity   = alchemy_forms_resolve_style_px($style, 'container_bg_opacity', $d, 0, 100);
     $container_border    = alchemy_forms_resolve_style_color($style, 'container_border_color', $d, 'border_color');
@@ -533,6 +535,7 @@ function alchemy_forms_style_metabox($post) {
         alchemy_forms_style_field_color('wa_style_input_bg', 'input_bg_color', $input_bg, __('Background color', 'alchemy-forms'));
         alchemy_forms_style_field_color('wa_style_input_text', 'input_text_color', $input_text, __('Text color', 'alchemy-forms'));
         alchemy_forms_style_field_color('wa_style_input_focus', 'input_focus_color', $input_focus, __('Focus color', 'alchemy-forms'), __('Used for the focus outline, the file-upload "Browse" button, and radio/checkbox controls.', 'alchemy-forms'));
+        alchemy_forms_style_field_color('wa_style_upload_hover', 'upload_hover_color', $upload_hover, __('File upload button hover color', 'alchemy-forms'));
         alchemy_forms_style_field_typography('input', 'input_font', $input_font, 'input_weight', $input_weight, $font_opts, $weight_opts, __('Font', 'alchemy-forms'));
         alchemy_forms_style_field_number('wa_style_input_font_size', 'input_font_size', $input_font_size, __('Font size (px)', 'alchemy-forms'));
         alchemy_forms_style_field_number('wa_style_input_padding', 'input_padding', $input_padding, __('Padding (px)', 'alchemy-forms'));
@@ -577,6 +580,7 @@ function alchemy_forms_style_metabox($post) {
     <div class="wa-tab-panel" data-tab-panel="container" style="display:none;">
         <?php
         alchemy_forms_style_field_number('wa_style_radius', 'radius', $radius, __('Corner radius (px)', 'alchemy-forms'), 0, 999, __('Also rounds inputs, buttons, and the file upload box.', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_container_width', 'container_width', $container_width, __('Container width (px)', 'alchemy-forms'), 200, 1600, __('The maximum width of the whole form.', 'alchemy-forms'));
         alchemy_forms_style_field_color('wa_style_container_bg', 'container_bg_color', $container_bg, __('Background color', 'alchemy-forms'));
         ?>
         <p>
@@ -1130,6 +1134,7 @@ add_action('save_post_wa_form', function ($post_id) {
             'input_bg_color'     => alchemy_forms_resolve_style_color($style_in, 'input_bg_color', $d),
             'input_text_color'   => alchemy_forms_resolve_style_color($style_in, 'input_text_color', $d),
             'input_focus_color'  => alchemy_forms_resolve_style_color($style_in, 'input_focus_color', $d),
+            'upload_hover_color' => alchemy_forms_resolve_style_color($style_in, 'upload_hover_color', $d),
             'input_font'         => alchemy_forms_resolve_style_font($style_in, 'input_font', $d, $google_fonts),
             'input_weight'       => alchemy_forms_resolve_style_weight($style_in, 'input_weight', $d, $weight_opts),
             'input_font_size'    => alchemy_forms_resolve_style_px($style_in, 'input_font_size', $d),
@@ -1161,6 +1166,7 @@ add_action('save_post_wa_form', function ($post_id) {
             'step_label_color' => alchemy_forms_resolve_style_color($style_in, 'step_label_color', $d),
 
             'radius'                  => alchemy_forms_resolve_style_px($style_in, 'radius', $d),
+            'container_width'         => alchemy_forms_resolve_style_px($style_in, 'container_width', $d, 200, 1600),
             'container_bg_color'      => alchemy_forms_resolve_style_color($style_in, 'container_bg_color', $d),
             'container_bg_opacity'    => alchemy_forms_resolve_style_px($style_in, 'container_bg_opacity', $d, 0, 100),
             'container_border_color'  => alchemy_forms_resolve_style_color($style_in, 'container_border_color', $d),
