@@ -989,20 +989,28 @@ function alchemy_forms_frontend_css() {
   --wa-success-text-weight: 400;
   --wa-success-text-size: 15px;
   max-width: var(--wa-container-width);
+  width: 100%;
   margin: 0 auto;
   font-family: var(--wa-input-font);
   color: var(--wa-input-text);
   box-sizing: border-box;
+  overflow-wrap: break-word;
 }
 .wa-form-wrap *, .wa-form-wrap *::before, .wa-form-wrap *::after { box-sizing: inherit; }
 .wa-form-title { font-family: var(--wa-title-font); font-weight: var(--wa-title-weight); font-size: var(--wa-title-size); color: var(--wa-title-color); margin: 0 0 1.25rem; }
 .wa-form { background: var(--wa-container-bg); border: var(--wa-container-border-width) solid var(--wa-container-border); border-radius: calc(var(--wa-radius) + 6px); padding: var(--wa-container-padding); box-shadow: var(--wa-shadow); position: relative; }
-.wa-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--wa-field-gap); }
+.wa-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--wa-field-gap); }
+/* min-width: 0 overrides a grid item's default "never shrink below my
+   content's min-content width" — without it, one wide-enough field (a long
+   unbroken word, a <select> with long option text, the file input's native
+   min width) forces the whole track wider than the container, which pushes
+   the entire form off the right edge of the screen on narrow viewports. */
+.wa-field { min-width: 0; }
 .wa-field--half { grid-column: span 1; }
 .wa-field--full { grid-column: 1 / -1; }
 .wa-field--hidden { display: none; }
 @media (max-width: 560px) {
-  .wa-form-grid { grid-template-columns: 1fr; }
+  .wa-form-grid { grid-template-columns: minmax(0, 1fr); }
   .wa-field--half { grid-column: 1 / -1; }
   .wa-form { padding: min(var(--wa-container-padding), 1.75rem) min(var(--wa-container-padding), 1.5rem); }
 }
@@ -1023,8 +1031,8 @@ function alchemy_forms_frontend_css() {
 .wa-choice-option { display: flex; align-items: center; gap: 0.5rem; font-family: var(--wa-input-font); font-weight: 400; font-size: 0.92rem; color: var(--wa-input-text); margin-bottom: 0.5rem; cursor: pointer; }
 .wa-choice-option:last-child { margin-bottom: 0; }
 .wa-choice-option input[type=radio], .wa-choice-option input[type=checkbox] { width: auto; margin: 0; accent-color: var(--wa-input-focus); }
-.wa-file-input { border: 1.5px dashed var(--wa-input-border); border-radius: var(--wa-radius); padding: 1rem; background: var(--wa-input-bg); display: flex; flex-direction: column; gap: 0.4rem; }
-.wa-file-input input[type=file] { font-family: var(--wa-input-font); font-size: 0.88rem; color: var(--wa-input-hint); }
+.wa-file-input { border: 1.5px dashed var(--wa-input-border); border-radius: var(--wa-radius); padding: 1rem; background: var(--wa-input-bg); display: flex; flex-direction: column; gap: 0.4rem; min-width: 0; }
+.wa-file-input input[type=file] { font-family: var(--wa-input-font); font-size: 0.88rem; color: var(--wa-input-hint); max-width: 100%; min-width: 0; }
 .wa-file-input input[type=file]::file-selector-button {
   font-family: var(--wa-input-font); font-weight: 500; font-size: 0.85rem; color: #fff; background: var(--wa-input-focus);
   border: none; border-radius: 6px; padding: 0.5rem 0.9rem; margin-right: 0.75rem; cursor: pointer; transition: background 0.15s ease;

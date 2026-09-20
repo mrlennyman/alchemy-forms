@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.0.1
+Stable tag: 3.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,6 +32,10 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
 == Changelog ==
+
+= 3.0.2 =
+* Fixed forms overflowing off the right edge of the screen on mobile. Cause: CSS Grid (and flexbox) items don't shrink below their content's natural width by default — one wide-enough field (a `<select>` with long option text, the file upload input's native minimum width) was forcing the whole row, and therefore the whole form, wider than the screen. Confirmed live on a real form before and after the fix.
+* Added `overflow-wrap: break-word` as a safety net against a long unbroken string (a long URL or email in field content) causing the same kind of overflow in the future.
 
 = 3.0.1 =
 * Added "Krub" to the curated Google Fonts list.
