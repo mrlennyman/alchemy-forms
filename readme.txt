@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -46,8 +46,11 @@ All three require `manage_options` — entries can contain personal information 
 
 == Changelog ==
 
-= 3.1.0 =
+= 3.1.1 =
 * Add read-only Abilities API integration for MCP clients (WordPress 6.9+ only) — `alchemy-forms/list-forms`, `alchemy-forms/get-form`, `alchemy-forms/get-entries`. See "Abilities API support" above.
+
+= 3.1.0 =
+* Added a "Mobile" tab to the Style panel (applied at 560px and narrower): container padding, title font size, and a toggle to let the form ignore its own Container width limit on phones. Note this only removes Alchemy Forms' own width limit — it can't override spacing a page builder adds around the shortcode (e.g. a Beaver Builder module's margin); that's fixed in the page builder itself.
 
 = 3.0.2 =
 * Fixed forms overflowing off the right edge of the screen on mobile. Cause: CSS Grid (and flexbox) items don't shrink below their content's natural width by default — one wide-enough field (a `<select>` with long option text, the file upload input's native minimum width) was forcing the whole row, and therefore the whole form, wider than the screen. Confirmed live on a real form before and after the fix.

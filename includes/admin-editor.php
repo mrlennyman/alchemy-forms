@@ -501,6 +501,10 @@ function alchemy_forms_style_metabox($post) {
     $success_text_font         = alchemy_forms_resolve_style_font($style, 'success_text_font', $ld, $google_fonts);
     $success_text_weight       = alchemy_forms_resolve_style_weight($style, 'success_text_weight', $ld, $weight_opts);
     $success_text_font_size    = alchemy_forms_resolve_style_px($style, 'success_text_font_size', $d);
+
+    $mobile_full_width        = !empty($style['mobile_full_width']);
+    $mobile_container_padding = alchemy_forms_resolve_style_px($style, 'mobile_container_padding', $d);
+    $mobile_title_font_size   = alchemy_forms_resolve_style_px($style, 'mobile_title_font_size', $d);
     ?>
     <div class="wa-tabs">
         <button type="button" class="wa-tab-btn wa-tab-btn--active" data-tab="title"><?php esc_html_e('Title', 'alchemy-forms'); ?></button>
@@ -510,6 +514,7 @@ function alchemy_forms_style_metabox($post) {
         <button type="button" class="wa-tab-btn" data-tab="button"><?php esc_html_e('Button', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="steps"><?php esc_html_e('Steps', 'alchemy-forms'); ?></button>
         <button type="button" class="wa-tab-btn" data-tab="container"><?php esc_html_e('Container', 'alchemy-forms'); ?></button>
+        <button type="button" class="wa-tab-btn" data-tab="mobile"><?php esc_html_e('Mobile', 'alchemy-forms'); ?></button>
     </div>
 
     <div class="wa-tab-panel" data-tab-panel="title">
@@ -617,6 +622,21 @@ function alchemy_forms_style_metabox($post) {
         alchemy_forms_style_field_color('wa_style_success_text_color', 'success_text_color', $success_text_color, __('Text color', 'alchemy-forms'));
         alchemy_forms_style_field_typography('success_text', 'success_text_font', $success_text_font, 'success_text_weight', $success_text_weight, $font_opts, $weight_opts, __('Text font', 'alchemy-forms'));
         alchemy_forms_style_field_number('wa_style_success_text_font_size', 'success_text_font_size', $success_text_font_size, __('Text font size (px)', 'alchemy-forms'));
+        ?>
+    </div>
+
+    <div class="wa-tab-panel" data-tab-panel="mobile" style="display:none;">
+        <p class="description"><?php esc_html_e('Applied at 560px and narrower, on top of every setting above.', 'alchemy-forms'); ?></p>
+        <p>
+            <label>
+                <input type="checkbox" name="wa_settings[style][mobile_full_width]" value="1" <?php checked($mobile_full_width); ?>>
+                <?php esc_html_e('Ignore the Container width limit on phones', 'alchemy-forms'); ?>
+            </label>
+            <span class="description"><?php esc_html_e('Lets the form fill 100% of whatever space it has on a phone instead of stopping at the Container tab\'s width. This only removes Alchemy Forms\' own width limit — it can\'t override spacing added around the form by a page builder (a Beaver Builder module\'s margin, for example); that\'s fixed in the page builder itself.', 'alchemy-forms'); ?></span>
+        </p>
+        <?php
+        alchemy_forms_style_field_number('wa_style_mobile_container_padding', 'mobile_container_padding', $mobile_container_padding, __('Container padding (px)', 'alchemy-forms'));
+        alchemy_forms_style_field_number('wa_style_mobile_title_font_size', 'mobile_title_font_size', $mobile_title_font_size, __('Title font size (px)', 'alchemy-forms'));
         ?>
     </div>
     <?php
@@ -1184,6 +1204,10 @@ add_action('save_post_wa_form', function ($post_id) {
             'success_text_font'         => alchemy_forms_resolve_style_font($style_in, 'success_text_font', $d, $google_fonts),
             'success_text_weight'       => alchemy_forms_resolve_style_weight($style_in, 'success_text_weight', $d, $weight_opts),
             'success_text_font_size'    => alchemy_forms_resolve_style_px($style_in, 'success_text_font_size', $d),
+
+            'mobile_full_width'        => !empty($style_in['mobile_full_width']) ? 1 : 0,
+            'mobile_container_padding' => alchemy_forms_resolve_style_px($style_in, 'mobile_container_padding', $d),
+            'mobile_title_font_size'   => alchemy_forms_resolve_style_px($style_in, 'mobile_title_font_size', $d),
         ];
 
         $flodesk_in = (isset($s['integrations']['flodesk']) && is_array($s['integrations']['flodesk'])) ? $s['integrations']['flodesk'] : [];

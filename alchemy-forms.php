@@ -3,7 +3,7 @@
  * Plugin Name: Alchemy Forms
  * Plugin URI:  https://websitealchemy.com
  * Description: Lightweight form builder with editable fields, layout control, file uploads, and an entries dashboard with CSV export.
- * Version:     3.1.0
+ * Version:     3.1.1
  * Author:      Website Alchemy
  * Author URI:  https://websitealchemy.com
  * License:     GPL-2.0-or-later
@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) exit;
 
-define('ALCHEMY_FORMS_VERSION', '3.1.0');
+define('ALCHEMY_FORMS_VERSION', '3.1.1');
 define('ALCHEMY_FORMS_DIR', plugin_dir_path(__FILE__));
 define('ALCHEMY_FORMS_URL', plugin_dir_url(__FILE__));
 
@@ -439,6 +439,11 @@ function alchemy_forms_style_defaults() {
         'success_text_font'         => 'Inter',
         'success_text_weight'       => 400,
         'success_text_font_size'    => 15,
+
+        // Mobile (applied at 560px and below, on top of everything above)
+        'mobile_full_width'        => 0,
+        'mobile_container_padding' => 20,
+        'mobile_title_font_size'   => 24,
 
         // Legacy (pre-2.4.0), kept only for migration — see docblock above.
         'primary_color'   => '#2F4F3E',

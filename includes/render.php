@@ -320,7 +320,7 @@ function alchemy_forms_render_shortcode($atts) {
 
     ob_start();
     ?>
-    <div class="wa-form-wrap" style="<?php echo esc_attr($style['inline']); ?>" data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>" data-title="<?php echo esc_attr($atts['title']); ?>" data-embed-post-id="<?php echo (int) get_the_ID(); ?>">
+    <div class="wa-form-wrap<?php echo !empty($style['mobile_full_width']) ? ' wa-mobile-full-width' : ''; ?>" style="<?php echo esc_attr($style['inline']); ?>" data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>" data-title="<?php echo esc_attr($atts['title']); ?>" data-embed-post-id="<?php echo (int) get_the_ID(); ?>">
         <?php if ($atts['title'] !== '') : ?>
             <h2 class="wa-form-title"><?php echo esc_html($atts['title']); ?></h2>
         <?php endif; ?>
@@ -809,6 +809,10 @@ function alchemy_forms_resolve_style($style_settings) {
     $success_text_weight       = alchemy_forms_resolve_style_weight($style_settings, 'success_text_weight', $ld, $weight_opts);
     $success_text_font_size    = alchemy_forms_resolve_style_px($style_settings, 'success_text_font_size', $d);
 
+    $mobile_full_width        = !empty($style_settings['mobile_full_width']);
+    $mobile_container_padding = alchemy_forms_resolve_style_px($style_settings, 'mobile_container_padding', $d);
+    $mobile_title_font_size   = alchemy_forms_resolve_style_px($style_settings, 'mobile_title_font_size', $d);
+
     $vars = [
         '--wa-title-color'      => $title_color,
         '--wa-title-font'       => $google_fonts[$title_font_key]['family'],
@@ -874,6 +878,9 @@ function alchemy_forms_resolve_style($style_settings) {
         '--wa-success-text-font'    => $google_fonts[$success_text_font_key]['family'],
         '--wa-success-text-weight'  => $success_text_weight,
         '--wa-success-text-size'    => $success_text_font_size . 'px',
+
+        '--wa-mobile-container-padding' => $mobile_container_padding . 'px',
+        '--wa-mobile-title-size'        => $mobile_title_font_size . 'px',
     ];
 
     $inline = '';
@@ -882,7 +889,8 @@ function alchemy_forms_resolve_style($style_settings) {
     }
 
     return [
-        'inline' => trim($inline),
+        'inline'            => trim($inline),
+        'mobile_full_width' => $mobile_full_width,
         'fonts'  => [
             ['key' => $title_font_key, 'font' => $google_fonts[$title_font_key], 'weight' => $title_weight],
             ['key' => $label_font_key, 'font' => $google_fonts[$label_font_key], 'weight' => $label_weight],
@@ -988,6 +996,8 @@ function alchemy_forms_frontend_css() {
   --wa-success-text-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --wa-success-text-weight: 400;
   --wa-success-text-size: 15px;
+  --wa-mobile-container-padding: 20px;
+  --wa-mobile-title-size: 24px;
   max-width: var(--wa-container-width);
   width: 100%;
   margin: 0 auto;
@@ -1012,7 +1022,9 @@ function alchemy_forms_frontend_css() {
 @media (max-width: 560px) {
   .wa-form-grid { grid-template-columns: minmax(0, 1fr); }
   .wa-field--half { grid-column: 1 / -1; }
-  .wa-form { padding: min(var(--wa-container-padding), 1.75rem) min(var(--wa-container-padding), 1.5rem); }
+  .wa-form { padding: var(--wa-mobile-container-padding); }
+  .wa-form-title { font-size: var(--wa-mobile-title-size); }
+  .wa-form-wrap.wa-mobile-full-width { max-width: none; }
 }
 .wa-field label { display: block; font-family: var(--wa-label-font); font-weight: var(--wa-label-weight); font-size: var(--wa-label-font-size); color: var(--wa-label-color); margin-bottom: 0.4rem; }
 .wa-req { color: var(--wa-label-required-color); margin-left: 2px; }
