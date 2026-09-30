@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.1.1
+Stable tag: 3.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -39,12 +39,15 @@ Requires **WordPress 6.9+** (the plugin itself still works on older versions —
 Alchemy Forms registers three **read-only** abilities in the `alchemy-forms` category, so an AI client connected through the [WordPress MCP Adapter](https://github.com/WordPress/mcp-adapter) can list and inspect forms and entries. None of them can create, update, or delete anything.
 
 * `alchemy-forms/list-forms` — lists forms (ID, title, status, embed shortcode). Optional `title` (partial match) and `status` filters.
-* `alchemy-forms/get-form` — input `form_id`. Returns every field (uid, label, type, required, width, options, order) and the form's settings (recipients, submit button text, success message, and other per-form configuration). Stored integration API keys/secrets are always stripped from the response, even though the permission check below already restricts this to administrators.
+* `alchemy-forms/get-form` — input `form_id`. Returns every field (uid, label, type, required, width, options, order, its show/hide `conditions` exactly as stored, an "html" field's `content`, and any other per-field setting such as placeholder text under a field-level `settings` object) and the form's own settings (recipients, submit button text, success message, and other per-form configuration). Stored integration API keys/secrets are always stripped from the response, even though the permission check below already restricts this to administrators.
 * `alchemy-forms/get-entries` — input `form_id`, optional `entry_id`, `limit` (default 20, max 100), and `offset`. Returns submitted entries newest-first with their field values and submission timestamp.
 
 All three require `manage_options` — entries can contain personal information submitted by site visitors, so this is intentionally not loosened to a lower capability.
 
 == Changelog ==
+
+= 3.2.0 =
+* `alchemy-forms/get-form` now returns each field's complete stored definition, not just uid/label/type/required/width/options/order: a `conditions` property with its show/hide rule exactly as stored (or null), a `content` property for an "html" field's markup (or null for every other type), and a per-field `settings` object holding anything else that field has stored (placeholder text, hide_label, a hidden field's source/static_value, and any future per-field setting, automatically, with no ability update needed). Still read-only, still requires manage_options, still strips integration API keys/secrets.
 
 = 3.1.1 =
 * Add read-only Abilities API integration for MCP clients (WordPress 6.9+ only) — `alchemy-forms/list-forms`, `alchemy-forms/get-form`, `alchemy-forms/get-entries`. See "Abilities API support" above.

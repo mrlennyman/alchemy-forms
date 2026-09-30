@@ -75,7 +75,7 @@ if (function_exists('wp_register_ability')) {
 
         wp_register_ability('alchemy-forms/get-form', [
             'label'               => __('Get an Alchemy Forms form', 'alchemy-forms'),
-            'description'         => __('Returns one form\'s full definition: every field (uid, label, type, required, width, options, order) and its settings (recipients, submit button text, success message, and other per-form configuration). Integration API keys/secrets are never included, even though this ability already requires manage_options.', 'alchemy-forms'),
+            'description'         => __('Returns one form\'s full definition: every field (uid, label, type, required, width, options, order, conditions, content, and any other stored per-field settings) and the form\'s own settings (recipients, submit button text, success message, and other per-form configuration). Integration API keys/secrets are never included, even though this ability already requires manage_options.', 'alchemy-forms'),
             'category'            => 'alchemy-forms',
             'input_schema'        => [
                 'type'       => 'object',
@@ -100,17 +100,32 @@ if (function_exists('wp_register_ability')) {
                         'items' => [
                             'type'       => 'object',
                             'properties' => [
-                                'uid'      => ['type' => 'string'],
-                                'label'    => ['type' => 'string'],
-                                'type'     => ['type' => 'string'],
-                                'required' => ['type' => 'boolean'],
-                                'width'    => ['type' => 'string'],
-                                'options'  => ['type' => 'array', 'items' => ['type' => 'string']],
-                                'order'    => ['type' => 'integer'],
+                                'uid'        => ['type' => 'string'],
+                                'label'      => ['type' => 'string'],
+                                'type'       => ['type' => 'string'],
+                                'required'   => ['type' => 'boolean'],
+                                'width'      => ['type' => 'string'],
+                                'options'    => ['type' => 'array', 'items' => ['type' => 'string']],
+                                'order'      => ['type' => 'integer'],
+                                'conditions' => [
+                                    'type'        => ['object', 'null'],
+                                    'description' => __('This field\'s show/hide rule exactly as stored (field = the uid of the field it depends on, comparator, value), or null if it has none.', 'alchemy-forms'),
+                                ],
+                                'content'    => [
+                                    'type'        => ['string', 'null'],
+                                    'description' => __('The HTML content of an "html"-type field, or null for every other field type.', 'alchemy-forms'),
+                                ],
+                                'settings'   => [
+                                    'type'        => 'object',
+                                    'description' => __('Any other setting stored on this specific field (e.g. placeholder text, hide_label, or a hidden field\'s source/static_value) — varies by field type.', 'alchemy-forms'),
+                                ],
                             ],
                         ],
                     ],
-                    'settings'  => ['type' => 'object'],
+                    'settings'  => [
+                        'type'        => 'object',
+                        'description' => __('The form\'s own settings (recipients, submit button text, success message, styling, integrations, payment) — not to be confused with a field\'s own "settings" above.', 'alchemy-forms'),
+                    ],
                 ],
             ],
             'execute_callback'    => 'alchemy_forms_ability_get_form',
@@ -247,14 +262,34 @@ function alchemy_forms_ability_get_form($input) {
 
     $fields = [];
     foreach (array_values($stored_fields) as $order => $f) {
+        if (!is_array($f)) $f = [];
+
+        // Everything else this field has stored — placeholder, hide_label,
+        // and (for a hidden field) source/static_value today, plus whatever
+        // future per-field settings the builder adds later — without this
+        // ability needing an update every time a new one is introduced.
+        // uid/label/type/required/width/options/condition/content are
+        // already surfaced as their own top-level properties above, so
+        // they're excluded here to avoid duplicating the same value twice.
+        $extra = $f;
+        foreach (['uid', 'label', 'type', 'required', 'width', 'options', 'condition', 'content'] as $known) {
+            unset($extra[$known]);
+        }
+
         $fields[] = [
-            'uid'      => isset($f['uid']) ? (string) $f['uid'] : '',
-            'label'    => isset($f['label']) ? (string) $f['label'] : '',
-            'type'     => isset($f['type']) ? (string) $f['type'] : '',
-            'required' => !empty($f['required']),
-            'width'    => (isset($f['width']) && $f['width'] === 'half') ? 'half' : 'full',
-            'options'  => (isset($f['options']) && is_array($f['options'])) ? array_values(array_map('strval', $f['options'])) : [],
-            'order'    => $order,
+            'uid'        => isset($f['uid']) ? (string) $f['uid'] : '',
+            'label'      => isset($f['label']) ? (string) $f['label'] : '',
+            'type'       => isset($f['type']) ? (string) $f['type'] : '',
+            'required'   => !empty($f['required']),
+            'width'      => (isset($f['width']) && $f['width'] === 'half') ? 'half' : 'full',
+            'options'    => (isset($f['options']) && is_array($f['options'])) ? array_values(array_map('strval', $f['options'])) : [],
+            'order'      => $order,
+            // The show/hide rule exactly as alchemy_forms_evaluate_condition()
+            // reads it (render.php) — null when the field has no condition.
+            'conditions' => isset($f['condition']) && is_array($f['condition']) ? $f['condition'] : null,
+            // Only meaningful for an "html" field; null for every other type.
+            'content'    => isset($f['content']) ? (string) $f['content'] : null,
+            'settings'   => $extra,
         ];
     }
 
