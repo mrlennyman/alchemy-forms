@@ -25,6 +25,7 @@ require_once ALCHEMY_FORMS_DIR . 'includes/aweber.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/mailchimp.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/stripe.php';
 require_once ALCHEMY_FORMS_DIR . 'includes/settings.php';
+require_once ALCHEMY_FORMS_DIR . 'includes/abilities.php';
 
 // Not on WordPress.org, so this is what gives client sites a real
 // "Update available" notice + one-click Update Now instead of needing a
