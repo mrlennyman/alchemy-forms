@@ -53,6 +53,7 @@ $GLOBALS['__posts'] = [
     1 => new FakePost(1, 'wa_form', 'Contact Us', 'publish'),
     2 => new FakePost(2, 'page', 'About', 'publish'),
     3 => new FakePost(3, 'wa_form', 'Newsletter Signup', 'draft'),
+    4 => new FakePost(4, 'wa_form', 'Event RSVP', 'publish'),
 ];
 function get_post($id) { return $GLOBALS['__posts'][(int) $id] ?? null; }
 function get_posts($args) {
@@ -66,15 +67,20 @@ function get_posts($args) {
     return $out;
 }
 
-// Field/settings meta shaped exactly like alchemy_forms_style_metabox()'s
-// save handler actually produces (uid/label/type/required/width/options),
-// and settings shaped like _wa_form_settings really is.
+// Field/settings meta shaped exactly like admin-editor.php's save_post_wa_form
+// handler actually produces (uid/label/type/required/width/options/condition/
+// content/source/static_value/placeholder/hide_label), and settings shaped
+// like _wa_form_settings really is.
 $GLOBALS['__meta'] = [
     1 => [
         '_wa_form_fields' => [
-            ['uid' => 'a1', 'label' => 'Full Name', 'type' => 'text', 'required' => 1, 'width' => 'half'],
-            ['uid' => 'a2', 'label' => 'Email', 'type' => 'email', 'required' => 1, 'width' => 'half'],
-            ['uid' => 'a3', 'label' => 'Topic', 'type' => 'select', 'required' => 0, 'width' => 'full', 'options' => ['Sales', 'Support']],
+            ['uid' => 'a1', 'label' => 'Full Name', 'type' => 'text', 'required' => 1, 'hide_label' => 0, 'width' => 'half', 'placeholder' => 'Jane Doe'],
+            ['uid' => 'a2', 'label' => 'Email', 'type' => 'email', 'required' => 1, 'hide_label' => 1, 'width' => 'half'],
+            ['uid' => 'a3', 'label' => 'Topic', 'type' => 'select', 'required' => 0, 'hide_label' => 0, 'width' => 'full', 'options' => ['Sales', 'Support']],
+            // Conditional field: only shown when Topic = Support — this is
+            // exactly the "form that has conditional fields" case.
+            ['uid' => 'a4', 'label' => 'Support Details', 'type' => 'textarea', 'required' => 0, 'hide_label' => 0, 'width' => 'full',
+                'condition' => ['field' => 'a3', 'comparator' => 'equals', 'value' => 'Support']],
         ],
         '_wa_form_settings' => [
             'recipient'    => ['owner@example.com'],
@@ -88,6 +94,13 @@ $GLOBALS['__meta'] = [
         ],
     ],
     3 => ['_wa_form_fields' => [], '_wa_form_settings' => []],
+    4 => [
+        '_wa_form_fields' => [
+            ['uid' => 'c1', 'label' => '', 'type' => 'html', 'required' => 0, 'hide_label' => 0, 'width' => 'full', 'content' => '<p>Welcome to the event!</p>'],
+            ['uid' => 'c2', 'label' => 'Referrer', 'type' => 'hidden', 'required' => 0, 'hide_label' => 0, 'width' => 'full', 'source' => 'post_title', 'static_value' => ''],
+        ],
+        '_wa_form_settings' => [],
+    ],
 ];
 function get_post_meta($id, $key, $single = false) { return $GLOBALS['__meta'][(int) $id][$key] ?? false; }
 
@@ -184,12 +197,12 @@ $GLOBALS['__caps'] = true;
 
 echo "\n== list-forms ==\n";
 $r = alchemy_forms_ability_list_forms([]);
-check('returns both wa_form posts regardless of status (default any)', $r['total'] === 2);
+check('returns all 3 wa_form posts regardless of status (default any)', $r['total'] === 3);
 check('does not include the non-wa_form post', !in_array(2, array_column($r['forms'], 'id'), true));
 check('shortcode format matches [wa_form id="X"]', $r['forms'][0]['shortcode'] === '[wa_form id="' . $r['forms'][0]['id'] . '"]');
 
 $r = alchemy_forms_ability_list_forms(['status' => 'publish']);
-check('status filter narrows to the one published form', $r['total'] === 1 && $r['forms'][0]['id'] === 1);
+check('status filter narrows to the 2 published forms', $r['total'] === 2 && in_array(1, array_column($r['forms'], 'id'), true) && in_array(4, array_column($r['forms'], 'id'), true));
 
 $r = alchemy_forms_ability_list_forms(['title' => 'newsletter']);
 check('title filter is case-insensitive partial match', $r['total'] === 1 && $r['forms'][0]['id'] === 3);
@@ -200,10 +213,20 @@ check('title filter with no match returns empty, not an error', $r['total'] === 
 echo "\n== get-form ==\n";
 $r = alchemy_forms_ability_get_form(['form_id' => 1]);
 check('returns the form', !is_wp_error($r) && $r['id'] === 1 && $r['title'] === 'Contact Us');
-check('returns all 3 fields in order', count($r['fields']) === 3 && $r['fields'][2]['label'] === 'Topic');
+check('returns all 4 fields in order', count($r['fields']) === 4 && $r['fields'][2]['label'] === 'Topic');
 check('field "order" matches array position', $r['fields'][0]['order'] === 0 && $r['fields'][2]['order'] === 2);
 check('select field options come through', $r['fields'][2]['options'] === ['Sales', 'Support']);
 check('required is a real boolean, not 1/0', $r['fields'][0]['required'] === true && $r['fields'][2]['required'] === false);
+check('a field with no condition reports conditions: null', $r['fields'][0]['conditions'] === null);
+check('a conditional field\'s condition comes through exactly as stored',
+    $r['fields'][3]['conditions'] === ['field' => 'a3', 'comparator' => 'equals', 'value' => 'Support']
+);
+check('a non-html field reports content: null', $r['fields'][0]['content'] === null);
+check('placeholder shows up under the field\'s own "settings"', $r['fields'][0]['settings']['placeholder'] === 'Jane Doe');
+check('hide_label shows up under the field\'s own "settings"', $r['fields'][1]['settings']['hide_label'] === 1);
+check('per-field settings never duplicates a top-level key (e.g. no "uid" inside settings)',
+    !isset($r['fields'][0]['settings']['uid']) && !isset($r['fields'][3]['settings']['condition'])
+);
 check('Flodesk api_key is redacted', !isset($r['settings']['integrations']['flodesk']['api_key']));
 check('Mailchimp api_key is redacted', !isset($r['settings']['integrations']['mailchimp']['api_key']));
 check('Flodesk non-secret fields survive redaction', $r['settings']['integrations']['flodesk']['enabled'] === 1);
@@ -217,6 +240,14 @@ check('a real post that is NOT a wa_form also returns WP_Error', is_wp_error($r)
 
 $r = alchemy_forms_ability_get_form(['form_id' => 3]);
 check('a form with no fields/settings yet returns empty arrays, not an error', !is_wp_error($r) && $r['fields'] === []);
+
+echo "\n== get-form (html + hidden field types) ==\n";
+$r = alchemy_forms_ability_get_form(['form_id' => 4]);
+check('an html field\'s content comes through', $r['fields'][0]['type'] === 'html' && $r['fields'][0]['content'] === '<p>Welcome to the event!</p>');
+check('an html field still reports conditions: null when it has none', $r['fields'][0]['conditions'] === null);
+check('a hidden field\'s source/static_value show up under settings',
+    $r['fields'][1]['settings']['source'] === 'post_title' && $r['fields'][1]['settings']['static_value'] === ''
+);
 
 echo "\n== get-entries ==\n";
 $r = alchemy_forms_ability_get_entries(['form_id' => 1]);
