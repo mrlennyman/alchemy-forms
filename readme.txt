@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.1.0
+Stable tag: 3.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -26,12 +26,28 @@ Alchemy Forms is a lightweight, self-hosted form builder for the Website Alchemy
 * Optional Stripe payment collection — a fixed price or a visitor-entered amount, via Stripe's hosted Checkout page (card details never touch this site)
 * One-click import from a Ninja Forms `.nff` export
 * Spam honeypot and nonce-verified submissions
+* On WordPress 6.9+: read-only WordPress Abilities API support, so an AI client connected through the WordPress MCP Adapter can list forms and inspect their fields, settings, and submitted entries — see "Abilities API support" below
 
 == Installation ==
 
 Not distributed via WordPress.org. Download the latest release zip from the GitHub repository's Releases page and upload it via **Plugins → Add New → Upload Plugin**. After the first install, updates are checked against the GitHub repo directly and show up as a normal "Update available" notice on the Plugins page.
 
+== Abilities API support ==
+
+Requires **WordPress 6.9+** (the plugin itself still works on older versions — this integration simply doesn't register on them, with no errors or notices). No setup needed; it registers automatically once the site is on 6.9+.
+
+Alchemy Forms registers three **read-only** abilities in the `alchemy-forms` category, so an AI client connected through the [WordPress MCP Adapter](https://github.com/WordPress/mcp-adapter) can list and inspect forms and entries. None of them can create, update, or delete anything.
+
+* `alchemy-forms/list-forms` — lists forms (ID, title, status, embed shortcode). Optional `title` (partial match) and `status` filters.
+* `alchemy-forms/get-form` — input `form_id`. Returns every field (uid, label, type, required, width, options, order) and the form's settings (recipients, submit button text, success message, and other per-form configuration). Stored integration API keys/secrets are always stripped from the response, even though the permission check below already restricts this to administrators.
+* `alchemy-forms/get-entries` — input `form_id`, optional `entry_id`, `limit` (default 20, max 100), and `offset`. Returns submitted entries newest-first with their field values and submission timestamp.
+
+All three require `manage_options` — entries can contain personal information submitted by site visitors, so this is intentionally not loosened to a lower capability.
+
 == Changelog ==
+
+= 3.1.1 =
+* Add read-only Abilities API integration for MCP clients (WordPress 6.9+ only) — `alchemy-forms/list-forms`, `alchemy-forms/get-form`, `alchemy-forms/get-entries`. See "Abilities API support" above.
 
 = 3.1.0 =
 * Added a "Mobile" tab to the Style panel (applied at 560px and narrower): container padding, title font size, and a toggle to let the form ignore its own Container width limit on phones. Note this only removes Alchemy Forms' own width limit — it can't override spacing a page builder adds around the shortcode (e.g. a Beaver Builder module's margin); that's fixed in the page builder itself.
