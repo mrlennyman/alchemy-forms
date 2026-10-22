@@ -321,6 +321,7 @@ function alchemy_forms_settings_metabox($post) {
     $submit_text      = isset($settings['submit_text']) ? $settings['submit_text'] : 'Submit';
     $success_msg      = isset($settings['success_msg']) ? $settings['success_msg'] : "Thanks — your submission has been received.";
     $turnstile_enabled = !empty($settings['turnstile_enabled']);
+    $placeholders_only = !empty($settings['placeholders_only']);
     ?>
     <p>
         <label for="wa_recipient"><strong><?php esc_html_e('Send submissions to', 'alchemy-forms'); ?></strong></label>
@@ -334,6 +335,13 @@ function alchemy_forms_settings_metabox($post) {
     <p>
         <label for="wa_success_msg"><strong><?php esc_html_e('Success message', 'alchemy-forms'); ?></strong></label>
         <textarea id="wa_success_msg" name="wa_settings[success_msg]" rows="3" class="widefat"><?php echo esc_textarea($success_msg); ?></textarea>
+    </p>
+    <p>
+        <label>
+            <input type="checkbox" name="wa_settings[placeholders_only]" value="1" <?php checked($placeholders_only); ?>>
+            <?php esc_html_e('Hide labels, show placeholders only', 'alchemy-forms'); ?>
+        </label>
+        <span class="description"><?php esc_html_e('Text fields use their placeholder (or the label text, if no placeholder is set) and a dropdown shows its label as the first option. Radio buttons, checkboxes, dates and file uploads have no placeholder, so they keep their label. Hidden labels stay available to screen readers.', 'alchemy-forms'); ?></span>
     </p>
     <?php if (alchemy_forms_turnstile_configured()) : ?>
         <p>
@@ -1124,6 +1132,7 @@ add_action('save_post_wa_form', function ($post_id) {
         $settings['submit_text'] = isset($s['submit_text']) && $s['submit_text'] !== '' ? sanitize_text_field($s['submit_text']) : 'Submit';
         $settings['success_msg'] = isset($s['success_msg']) ? sanitize_textarea_field($s['success_msg']) : '';
         $settings['turnstile_enabled'] = (!empty($s['turnstile_enabled']) && alchemy_forms_turnstile_configured()) ? 1 : 0;
+        $settings['placeholders_only'] = !empty($s['placeholders_only']) ? 1 : 0;
 
         $style_in           = (isset($s['style']) && is_array($s['style'])) ? $s['style'] : [];
         $google_fonts       = alchemy_forms_google_fonts();

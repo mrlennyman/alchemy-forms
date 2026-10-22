@@ -27,6 +27,7 @@ function alchemy_forms_render_shortcode($atts) {
     $submit_text = !empty($settings['submit_text']) ? $settings['submit_text'] : __('Submit', 'alchemy-forms');
     $success_msg = !empty($settings['success_msg']) ? $settings['success_msg'] : __('Thanks — your submission has been received.', 'alchemy-forms');
     $turnstile_active = !empty($settings['turnstile_enabled']) && alchemy_forms_turnstile_configured();
+    $placeholders_only = !empty($settings['placeholders_only']);
     $payment_config   = (isset($settings['stripe']) && is_array($settings['stripe'])) ? $settings['stripe'] : [];
     $payment_required = !empty($payment_config['enabled']) && alchemy_forms_stripe_configured();
 
@@ -358,7 +359,7 @@ function alchemy_forms_render_shortcode($atts) {
 
                 <?php if ($step_count <= 1) : ?>
                     <div class="wa-form-grid">
-                        <?php foreach ((isset($steps[0]) ? $steps[0] : []) as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
+                        <?php foreach ((isset($steps[0]) ? $steps[0] : []) as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup, $placeholders_only); endforeach; ?>
                     </div>
 
                     <?php if ($payment_required) : alchemy_forms_render_payment_field($payment_config, $form_id); endif; ?>
@@ -381,7 +382,7 @@ function alchemy_forms_render_shortcode($atts) {
                                 <h3 class="wa-form-step-title"><?php echo esc_html($step_titles[$step_index]); ?></h3>
                             <?php endif; ?>
                             <div class="wa-form-grid">
-                                <?php foreach ($step_fields as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup); endforeach; ?>
+                                <?php foreach ($step_fields as $field) : alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup, $placeholders_only); endforeach; ?>
                             </div>
                             <?php if ($payment_required && $step_index === $step_count - 1) : alchemy_forms_render_payment_field($payment_config, $form_id); endif; ?>
                             <?php if ($turnstile_active && $step_index === $step_count - 1) : ?>
@@ -521,8 +522,14 @@ add_action('wp_ajax_nopriv_alchemy_forms_submit', 'alchemy_forms_ajax_submit');
  * or sanitized content for an html block. Echoes directly (called inside an
  * output buffer). page_break fields are never passed in here; the caller
  * only uses them to decide where one step ends and the next begins.
+ *
+ * $placeholders_only is the form-level "hide labels, show placeholders only"
+ * setting: text-like fields and dropdowns hide their (still screen-reader
+ * accessible) label and carry its text in the placeholder / first option
+ * instead; radio, checkbox, date and file fields have nowhere to put a
+ * placeholder, so they keep their visible label.
  */
-function alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup) {
+function alchemy_forms_render_field_markup($field, $form_id, $values, $condition_lookup, $placeholders_only = false) {
     $name     = $field['name'];
     $type     = $field['type'];
     $is_group = in_array($type, ['radio', 'checkbox'], true);
@@ -535,6 +542,16 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
     // A hint shown only inside the empty field — never a substitute for the
     // <label> above, which is what screen readers and browser autofill use.
     $placeholder_attr = (!empty($field['placeholder'])) ? ' placeholder="' . esc_attr($field['placeholder']) . '"' : '';
+
+    // Placeholders-only mode. With no placeholder of its own, a text-like field
+    // falls back to its label text (plus the required asterisk, since the
+    // visible one is hidden along with the label) so it's never left blank.
+    $placeholder_capable = in_array($type, alchemy_forms_placeholder_eligible_types(), true);
+    $label_as_hint       = $placeholders_only && ($placeholder_capable || $type === 'select');
+    if ($placeholders_only && $placeholder_capable && empty($field['placeholder'])) {
+        $placeholder_attr = ' placeholder="' . esc_attr($field['label'] . ($req ? ' *' : '')) . '"';
+    }
+    $hide_label_now = $hidden_l || $label_as_hint;
 
     $condition     = isset($field['condition']) ? $field['condition'] : [];
     $has_condition = !empty($condition['field']);
@@ -577,7 +594,7 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
             </fieldset>
 
         <?php else : ?>
-            <label for="<?php echo esc_attr($id); ?>"<?php echo $hidden_l ? ' class="wa-visually-hidden"' : ''; ?>>
+            <label for="<?php echo esc_attr($id); ?>"<?php echo $hide_label_now ? ' class="wa-visually-hidden"' : ''; ?>>
                 <?php echo esc_html($field['label']); ?>
                 <?php if ($req) : ?><span class="wa-req">*</span><?php endif; ?>
             </label>
@@ -593,7 +610,7 @@ function alchemy_forms_render_field_markup($field, $form_id, $values, $condition
 
             <?php elseif ($type === 'select') : ?>
                 <select id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" <?php echo $req ? 'required aria-required="true"' : ''; ?>>
-                    <option value=""><?php esc_html_e('— Select —', 'alchemy-forms'); ?></option>
+                    <option value=""><?php echo $placeholders_only ? esc_html($field['label'] . ($req ? ' *' : '')) : esc_html__('— Select —', 'alchemy-forms'); ?></option>
                     <?php foreach ($options as $option) : ?>
                         <option value="<?php echo esc_attr($option); ?>" <?php selected((string) $val, (string) $option); ?>><?php echo esc_html($option); ?></option>
                     <?php endforeach; ?>

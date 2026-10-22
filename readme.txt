@@ -4,7 +4,7 @@ Tags: forms, form builder, contact form, multi-step forms, entries
 Requires at least: 6.2
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.2.0
+Stable tag: 3.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,9 @@ Alchemy Forms registers three **read-only** abilities in the `alchemy-forms` cat
 All three require `manage_options` — entries can contain personal information submitted by site visitors, so this is intentionally not loosened to a lower capability.
 
 == Changelog ==
+
+= 3.3.0 =
+* Added a form-level "Hide labels, show placeholders only" setting (Form Settings box). Text, email, phone, URL, number and paragraph fields hide their label and show their placeholder instead — or the label text itself if no placeholder is set (with a * when required) — and a dropdown shows its label as its first option. Radio buttons, checkboxes, dates and file uploads have no placeholder to carry the label, so they keep it. Hidden labels remain in the page for screen readers. Off by default; the existing per-field "Hide label" option is unchanged.
 
 = 3.2.0 =
 * `alchemy-forms/get-form` now returns each field's complete stored definition, not just uid/label/type/required/width/options/order: a `conditions` property with its show/hide rule exactly as stored (or null), a `content` property for an "html" field's markup (or null for every other type), and a per-field `settings` object holding anything else that field has stored (placeholder text, hide_label, a hidden field's source/static_value, and any future per-field setting, automatically, with no ability update needed). Still read-only, still requires manage_options, still strips integration API keys/secrets.
